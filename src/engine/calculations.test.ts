@@ -34,6 +34,34 @@ describe("getBaseHours", () => {
   });
 });
 
+describe("DEFAULT_SERVICES", () => {
+  it("prefills the 19 standard services with their monthly estimates", () => {
+    expect(DEFAULT_SERVICES).toHaveLength(19);
+    expect(DEFAULT_SERVICES).toMatchObject([
+      { id: "backup", deployHours: 30, maintenanceHours: 15 },
+      { id: "frontend_proxy", deployHours: 20, maintenanceHours: 8 },
+      { id: "reverse_proxy", deployHours: 15, maintenanceHours: 6 },
+      { id: "file_services", deployHours: 20, maintenanceHours: 10 },
+      { id: "web_service", deployHours: 25, maintenanceHours: 12 },
+      { id: "file_transfer_service", deployHours: 15, maintenanceHours: 8 },
+      { id: "firewall", deployHours: 40, maintenanceHours: 20 },
+      { id: "internal_networking", deployHours: 50, maintenanceHours: 25 },
+      { id: "cicd", deployHours: 60, maintenanceHours: 30 },
+      { id: "routing", deployHours: 30, maintenanceHours: 15 },
+      { id: "email", deployHours: 35, maintenanceHours: 15 },
+      { id: "productivity_suite", deployHours: 40, maintenanceHours: 10 },
+      { id: "chat", deployHours: 20, maintenanceHours: 10 },
+      { id: "telephone", deployHours: 30, maintenanceHours: 12 },
+      { id: "printing", deployHours: 15, maintenanceHours: 10 },
+      { id: "edr", deployHours: 45, maintenanceHours: 20 },
+      { id: "antivirus", deployHours: 20, maintenanceHours: 8 },
+      { id: "vulnerability_management", deployHours: 40, maintenanceHours: 25 },
+      { id: "databases", deployHours: 80, maintenanceHours: 40 },
+    ]);
+    expect(DEFAULT_SERVICES.every((service) => service.isActive && service.hasExpertise && !service.isAutomated)).toBe(true);
+  });
+});
+
 describe("getRequiredHours", () => {
   it("returns 0 for an inactive service regardless of other modifiers", () => {
     const service = makeService({ isActive: false, deployHours: 10, maintenanceHours: 10 });
@@ -145,7 +173,7 @@ describe("computeCapacityReport - SRE scenario validation", () => {
       isAutomated: true,
     }));
     const state: DashboardState = {
-      globalConfig: { fteCount: 10, weeklyHours: 40, annualSalary: 150000 },
+      globalConfig: { fteCount: 25, weeklyHours: 40, annualSalary: 150000 },
       services,
     };
 

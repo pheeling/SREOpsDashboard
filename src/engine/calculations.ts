@@ -137,7 +137,7 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
   const totalRequiredHours = getTotalRequiredHours(services);
   const buckets = getCapacityBuckets(state);
   const operationalLoadHours = buckets.maintenance + buckets.emergencyResponse + buckets.testingScaling;
-  const operationalLoadRatio = effectiveAvailableHours > 0 ? operationalLoadHours / effectiveAvailableHours : 0;
+  const operationalLoadRatio = effectiveAvailableHours > 0 ? operationalLoadHours / effectiveAvailableHours : 1;
 
   return {
     services: services.map(getServiceBreakdown),
