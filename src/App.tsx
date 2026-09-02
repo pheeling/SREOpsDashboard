@@ -1,0 +1,39 @@
+import { useState } from "react";
+import { DashboardProvider } from "./state/DashboardContext";
+import { GlobalConfigPanel } from "./components/GlobalConfigPanel";
+import { LoadGauge } from "./components/LoadGauge";
+import { HiringCostWidget } from "./components/HiringCostWidget";
+import { ServiceMatrix } from "./components/ServiceMatrix";
+import { SummaryReport } from "./components/SummaryReport";
+import "./App.css";
+
+function App() {
+  const [showSummaryReport, setShowSummaryReport] = useState(false);
+
+  return (
+    <DashboardProvider>
+      <main className="dashboard">
+        <header className="dashboard__header">
+          <h1>SRE Infrastructure Complexity &amp; Operational Capacity Calculator</h1>
+          <p>Quantify operational toil and keep it under the 50% SRE capacity threshold.</p>
+          <button type="button" onClick={() => setShowSummaryReport((v) => !v)} data-testid="toggle-summary-report">
+            {showSummaryReport ? "Back to Dashboard" : "View Automation ROI Summary Report"}
+          </button>
+        </header>
+
+        {showSummaryReport ? (
+          <SummaryReport />
+        ) : (
+          <>
+            <GlobalConfigPanel />
+            <LoadGauge />
+            <HiringCostWidget />
+            <ServiceMatrix />
+          </>
+        )}
+      </main>
+    </DashboardProvider>
+  );
+}
+
+export default App;
