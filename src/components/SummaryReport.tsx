@@ -11,7 +11,7 @@ export function SummaryReport() {
   const { state } = useDashboard();
   const { globalConfig, services } = state;
 
-  const manualServices = services.filter((s) => !s.isAutomated);
+  const manualServices = services.filter((s) => s.isActive && !s.isAutomated);
   const totalRoiDollars = manualServices.reduce(
     (sum, service) => sum + getAutomationRoiDollars(service, globalConfig),
     0,

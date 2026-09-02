@@ -1,5 +1,5 @@
 .dashboard {
-  max-width: 1100px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: 1.5rem;
   font-family: system-ui, sans-serif;
@@ -9,15 +9,40 @@
   margin-bottom: 1.5rem;
 }
 
+.dashboard__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.dashboard__left,
+.dashboard__right {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .dashboard__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .global-config-panel,
 .load-gauge,
 .hiring-cost-widget,
 .service-matrix,
-.summary-report {
-  margin-bottom: 1.5rem;
+.summary-report,
+.capacity-chart {
   padding: 1rem;
   border: 1px solid #d0d7de;
   border-radius: 8px;
+  background: #fff;
+}
+
+.global-config-panel {
+  margin-bottom: 1rem;
 }
 
 .global-config-panel label {
@@ -27,54 +52,266 @@
   font-size: 0.85rem;
 }
 
-.load-gauge__bar {
-  width: 100%;
-  height: 20px;
-  background: #e2e8f0;
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.load-gauge__fill {
-  height: 100%;
-  background: #2f855a;
-  transition: width 0.3s ease, background-color 0.3s ease;
-}
-
-.load-gauge--red-zone .load-gauge__fill {
-  background: #c53030;
-}
-
-.load-gauge__alert {
-  color: #c53030;
+/* --- Warning Banner --- */
+.warning-banner {
+  margin-bottom: 1rem;
+  padding: 0.9rem 1.1rem;
+  background: #fff5f5;
+  border: 2px solid #c53030;
+  color: #822727;
+  border-radius: 8px;
   font-weight: bold;
+}
+
+/* --- Load Gauge (half-circle) --- */
+.load-gauge {
+  text-align: center;
+}
+
+.load-gauge__svg {
+  width: 100%;
+  max-width: 260px;
+  margin: 0 auto;
+  display: block;
+}
+
+.load-gauge__percent {
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+.load-gauge__reading {
+  font-weight: bold;
+  font-size: 1.1rem;
+  margin: 0.25rem 0 0;
+}
+
+.load-gauge__detail {
+  color: #57606a;
+  font-size: 0.85rem;
+  margin: 0.15rem 0 0;
+}
+
+.load-gauge--red-zone {
+  border-color: #c53030;
+}
+
+/* --- Hiring Cost Widget --- */
+.hiring-cost-widget__amount {
+  font-size: 1.1rem;
+}
+
+/* --- Capacity Buckets Chart --- */
+.capacity-chart__bar {
+  display: flex;
+  width: 100%;
+  height: 28px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #e2e8f0;
+  margin-bottom: 1rem;
+}
+
+.capacity-chart__segment {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.capacity-chart__legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.capacity-chart__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.capacity-chart__swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.capacity-chart__legend-label {
+  flex: 1;
+}
+
+.capacity-chart__legend-value {
+  color: #57606a;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Service Matrix --- */
+.service-matrix__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.service-matrix__add-toggle {
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid #2f855a;
+  background: #2f855a;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.service-matrix__add-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+  margin: 1rem 0;
+  padding: 0.75rem;
+  border: 1px dashed #d0d7de;
+  border-radius: 6px;
+  background: #f6f8fa;
+}
+
+.service-matrix__add-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+  gap: 0.25rem;
+}
+
+.service-matrix__add-form input {
+  padding: 0.3rem 0.4rem;
+}
+
+.service-matrix__add-form button {
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  border: 1px solid #2f855a;
+  background: #2f855a;
+  color: #fff;
+  cursor: pointer;
+  height: fit-content;
 }
 
 .service-matrix__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.9rem;
+  margin-top: 1rem;
 }
 
+/* --- Service Card: Active vs Inactive --- */
 .service-card {
-  border: 1px solid #d0d7de;
-  border-radius: 6px;
   padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #d0d7de;
+  transition: opacity 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.service-card--active {
+  background: #f0fff4;
+  border-color: #2f855a;
+  box-shadow: 0 0 0 1px rgba(47, 133, 90, 0.25);
+}
+
+.service-card--inactive {
+  background: #f6f8fa;
+  opacity: 0.5;
+  filter: grayscale(0.6);
+}
+
+.service-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.service-card__activate {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.service-card__name {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.service-card__badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #57606a;
+  white-space: nowrap;
+}
+
+.service-card__badge--active {
+  background: #2f855a;
+  color: #fff;
+}
+
+.service-card__muted-note {
+  font-size: 0.75rem;
+  color: #8a8f98;
+  margin: 0.25rem 0 0;
+}
+
+.service-card__base-hours {
+  font-size: 0.75rem;
+  color: #57606a;
+  margin: 0.35rem 0;
+}
+
+.service-card__toggles {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
 }
 
 .service-card__toggle {
-  display: block;
-  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 6px;
+  border: 1px solid #d0d7de;
 }
 
+.service-card__toggle--on {
+  border-color: #3182ce;
+  background: #ebf8ff;
+  color: #2b6cb0;
+  font-weight: 600;
+}
+
+/* --- Summary Report --- */
 .summary-report table {
   width: 100%;
   border-collapse: collapse;
+  margin: 1rem 0;
 }
 
 .summary-report th,
 .summary-report td {
-  border-bottom: 1px solid #e2e8f0;
-  padding: 0.35rem 0.5rem;
   text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.summary-report__total {
+  font-weight: bold;
+  font-size: 1.1rem;
 }

@@ -19,18 +19,18 @@ export interface GlobalConfig {
 export interface Service {
   id: string;
   name: string;
-  /** Baseline weekly hours required to run the service with no modifiers. */
-  baseHours: number;
-  /** Whether the team has in-house Subject Matter Expertise for this service. */
-  hasSME: boolean;
+  /** Weekly hours required to initially deploy/roll out the service. */
+  deployHours: number;
+  /** Weekly hours required for steady-state maintenance of the service. */
+  maintenanceHours: number;
+  /** Whether this service is actively selected and contributing to the workload. */
+  isActive: boolean;
+  /** Whether the team has in-house technical expertise for this service. */
+  hasExpertise: boolean;
   /** Whether toil for this service has been automated away. */
   isAutomated: boolean;
-  /**
-   * Systemic importance multiplier. High-impact services (e.g. Databases,
-   * Internal Networking) are weighted above 1 to reflect the outsized
-   * operational cost of getting them wrong.
-   */
-  weight: number;
+  /** Whether this service was added by the user (vs. a standard seeded service). */
+  isCustom?: boolean;
 }
 
 export interface DashboardState {
@@ -38,40 +38,46 @@ export interface DashboardState {
   services: Service[];
 }
 
-/** The seven Capacity Budget buckets described in the design plan. */
+/** The four Capacity Budget buckets described in the design plan. */
 export interface CapacityBuckets {
+  /** New Features / Innovation: remaining capacity, target >= 50%. */
   innovation: number;
-  scaling: number;
+  /** Maintenance & Eliminating Toil: operational hours spent on active services. */
   maintenance: number;
-  eliminatingToil: number;
-  monitoring: number;
+  /** Emergency Response & Troubleshooting: reserve for unexpected incidents. */
   emergencyResponse: number;
-  testing: number;
+  /** Testing & User Scaling: prep time for user growth. */
+  testingScaling: number;
 }
 
 export interface ServiceBreakdown {
   id: string;
   name: string;
-  /** Hours required after the SME penalty and automation factor are applied. */
+  isActive: boolean;
+  isAutomated: boolean;
+  hasExpertise: boolean;
+  /** Raw Base Hours = Deploy Hours + Maintenance Hours (before automation). */
+  baseHours: number;
+  /** Hours required after the automation divisor is applied (0 when inactive). */
   requiredHours: number;
-  /** Portion of requiredHours attributable to steady-state upkeep. */
-  maintenanceHours: number;
-  /** Portion of requiredHours attributable to the missing-SME "cognitive tax". */
-  emergencyResponseHours: number;
-  /** Engineering investment needed to automate this service, if not already automated. */
-  eliminatingToilHours: number;
+  /** Availability penalty (hours) incurred because the team lacks expertise. */
+  expertisePenaltyHours: number;
 }
 
 export interface CapacityReport {
   services: ServiceBreakdown[];
+  /** Raw FTE capacity: fteCount * weeklyHours. */
   totalAvailableHours: number;
+  /** Available hours after the expertise-gap availability penalty is applied. */
+  effectiveAvailableHours: number;
+  /** Sum of active services' required operational hours. */
   totalRequiredHours: number;
   buckets: CapacityBuckets;
-  /** buckets.eliminatingToil + buckets.maintenance + buckets.emergencyResponse */
-  operationalToilHours: number;
-  /** operationalToilHours / totalAvailableHours, expressed 0..1 (or higher if over capacity). */
-  operationalToilRatio: number;
-  /** True when operationalToilRatio exceeds the 50% SRE threshold. */
+  /** maintenance + emergencyResponse + testingScaling. */
+  operationalLoadHours: number;
+  /** operationalLoadHours / effectiveAvailableHours, expressed 0..1 (or higher if over capacity). */
+  operationalLoadRatio: number;
+  /** True when operationalLoadRatio exceeds the 50% SRE threshold. */
   isRedZone: boolean;
   /** Fractional-FTE hiring cost required to close the Required/Available gap. */
   hiringCost: number;

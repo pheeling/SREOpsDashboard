@@ -5,6 +5,8 @@ import { LoadGauge } from "./components/LoadGauge";
 import { HiringCostWidget } from "./components/HiringCostWidget";
 import { ServiceMatrix } from "./components/ServiceMatrix";
 import { SummaryReport } from "./components/SummaryReport";
+import { CapacityBucketsChart } from "./components/CapacityBucketsChart";
+import { WarningBanner } from "./components/WarningBanner";
 import "./App.css";
 
 function App() {
@@ -26,9 +28,17 @@ function App() {
         ) : (
           <>
             <GlobalConfigPanel />
-            <LoadGauge />
-            <HiringCostWidget />
-            <ServiceMatrix />
+            <WarningBanner />
+            <div className="dashboard__grid">
+              <div className="dashboard__left">
+                <CapacityBucketsChart />
+                <HiringCostWidget />
+              </div>
+              <div className="dashboard__right">
+                <LoadGauge />
+                <ServiceMatrix />
+              </div>
+            </div>
           </>
         )}
       </main>
