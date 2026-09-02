@@ -12,17 +12,17 @@ export function HiringCostWidget() {
   const report = computeCapacityReport(state);
 
   return (
-    <section className="hiring-cost-widget" aria-label="Hiring Cost Estimator" data-testid="hiring-cost-widget">
-      <h2>Hiring Cost Estimator</h2>
+    <section className="hiring-cost-widget" aria-label="Financial Impact: External Hiring Costs" data-testid="hiring-cost-widget">
+      <h2>Financial Impact: External Hiring Costs</h2>
       {report.hiringCost > 0 ? (
         <p className="hiring-cost-widget__amount" data-testid="hiring-cost-amount">
-          {currencyFormatter.format(report.hiringCost)}/yr to close the gap between{" "}
-          {report.totalRequiredHours.toFixed(1)} required hours and {report.totalAvailableHours.toFixed(1)} available
-          hours.
+          {currencyFormatter.format(report.hiringCost)}/yr in external hiring costs to close the gap between{" "}
+          {report.totalRequiredHours.toFixed(1)} required hours and {report.effectiveAvailableHours.toFixed(1)}{" "}
+          effective available hours.
         </p>
       ) : (
         <p className="hiring-cost-widget__amount" data-testid="hiring-cost-amount">
-          No additional hiring required — current headcount covers required operational hours.
+          No external hiring required — current internal headcount covers required operational hours.
         </p>
       )}
     </section>

@@ -1,37 +1,63 @@
 import type { Service } from "../engine/types";
-import { getRequiredHours } from "../engine/calculations";
+import { getBaseHours, getRequiredHours } from "../engine/calculations";
 
 interface ServiceCardProps {
   service: Service;
-  onToggleSME: (id: string) => void;
+  onToggleActive: (id: string) => void;
+  onToggleExpertise: (id: string) => void;
   onToggleAutomation: (id: string) => void;
 }
 
-export function ServiceCard({ service, onToggleSME, onToggleAutomation }: ServiceCardProps) {
+export function ServiceCard({ service, onToggleActive, onToggleExpertise, onToggleAutomation }: ServiceCardProps) {
   const requiredHours = getRequiredHours(service);
+  const baseHours = getBaseHours(service);
 
   return (
-    <div className="service-card" data-testid={`service-card-${service.id}`}>
-      <h3 className="service-card__name">{service.name}</h3>
-      <p className="service-card__hours">{requiredHours.toFixed(2)} hrs/wk</p>
-      <label className="service-card__toggle">
-        <input
-          type="checkbox"
-          checked={service.hasSME}
-          onChange={() => onToggleSME(service.id)}
-          aria-label={`${service.name} SME`}
-        />
-        SME
-      </label>
-      <label className="service-card__toggle">
-        <input
-          type="checkbox"
-          checked={service.isAutomated}
-          onChange={() => onToggleAutomation(service.id)}
-          aria-label={`${service.name} Automation`}
-        />
-        Automation
-      </label>
+    <div
+      className={`service-card ${service.isActive ? "service-card--active" : "service-card--inactive"}`}
+      data-testid={`service-card-${service.id}`}
+    >
+      <div className="service-card__header">
+        <label className="service-card__activate">
+          <input
+            type="checkbox"
+            checked={service.isActive}
+            onChange={() => onToggleActive(service.id)}
+            aria-label={`${service.name} Active`}
+          />
+          <h3 className="service-card__name">{service.name}</h3>
+        </label>
+        <span className={`service-card__badge ${service.isActive ? "service-card__badge--active" : ""}`}>
+          {service.isActive ? requiredHours.toFixed(2) : "0.00"} hrs/wk
+        </span>
+      </div>
+
+      {!service.isActive && <p className="service-card__muted-note">Inactive — 0 hrs contributed</p>}
+
+      <p className="service-card__base-hours">Base: {baseHours.toFixed(1)} hrs/wk</p>
+
+      <div className="service-card__toggles">
+        <label className={`service-card__toggle ${service.isAutomated ? "service-card__toggle--on" : ""}`}>
+          <input
+            type="checkbox"
+            checked={service.isAutomated}
+            disabled={!service.isActive}
+            onChange={() => onToggleAutomation(service.id)}
+            aria-label={`${service.name} Automation`}
+          />
+          Automated
+        </label>
+        <label className={`service-card__toggle ${service.hasExpertise ? "service-card__toggle--on" : ""}`}>
+          <input
+            type="checkbox"
+            checked={service.hasExpertise}
+            disabled={!service.isActive}
+            onChange={() => onToggleExpertise(service.id)}
+            aria-label={`${service.name} Expertise`}
+          />
+          Expertise
+        </label>
+      </div>
     </div>
   );
 }

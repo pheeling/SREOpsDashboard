@@ -14,11 +14,17 @@ import type {
   ServiceBreakdown,
 } from "./types";
 
-/** Inverse modifier applied when a service has no in-house SME (the "cognitive tax"). */
-export const SME_PENALTY_MODIFIER = 1.25;
-
 /** Divisor applied to a service's hours once it has been automated ("1/3 Automation Rule"). */
 export const AUTOMATION_REDUCTION_FACTOR = 3;
+
+/** Fraction of a service's operational hours reduced from FTE availability when the team lacks expertise. */
+export const EXPERTISE_AVAILABILITY_PENALTY = 0.2;
+
+/** Fixed share of raw capacity reserved for unexpected incidents/outages. */
+export const EMERGENCY_RESPONSE_SHARE = 0.1;
+
+/** Fixed share of raw capacity reserved for user-growth prep/testing. */
+export const TESTING_SCALING_SHARE = 0.05;
 
 /** SRE-mandated ceiling on manual operational work as a share of total capacity. */
 export const RED_ZONE_THRESHOLD = 0.5;
@@ -26,22 +32,34 @@ export const RED_ZONE_THRESHOLD = 0.5;
 /** Fixed baseline used for financial modeling, per the design plan. */
 export const DEFAULT_ANNUAL_SALARY = 150_000;
 
-export function getSmeMultiplier(service: Pick<Service, "hasSME">): number {
-  return service.hasSME ? 1 : SME_PENALTY_MODIFIER;
-}
-
 export function getAutomationDivisor(service: Pick<Service, "isAutomated">): number {
   return service.isAutomated ? AUTOMATION_REDUCTION_FACTOR : 1;
 }
 
+/** Base Hours = Deploying Hours + Maintenance Hours (before automation is applied). */
+export function getBaseHours(service: Pick<Service, "deployHours" | "maintenanceHours">): number {
+  return service.deployHours + service.maintenanceHours;
+}
+
 /**
- * Required_Hours for a single service, after applying the SME penalty, the
- * automation reduction factor, and the service's systemic-importance weight.
+ * Required_Hours for a single service: Base Hours divided by 3 when
+ * automation is toggled on. Inactive services contribute 0 hours to the
+ * active workload.
  */
 export function getRequiredHours(service: Service): number {
-  const smeMultiplier = getSmeMultiplier(service);
-  const automationDivisor = getAutomationDivisor(service);
-  return (service.baseHours * smeMultiplier * (service.weight ?? 1)) / automationDivisor;
+  if (!service.isActive) return 0;
+  return getBaseHours(service) / getAutomationDivisor(service);
+}
+
+/**
+ * The availability penalty (in hours) incurred because the team lacks
+ * technical expertise for this service: 20% of the service's own required
+ * hours, subtracted from overall FTE availability. Only applies to active
+ * services.
+ */
+export function getExpertisePenaltyHours(service: Service): number {
+  if (!service.isActive || service.hasExpertise) return 0;
+  return getRequiredHours(service) * EXPERTISE_AVAILABILITY_PENALTY;
 }
 
 export function getTotalRequiredHours(services: Service[]): number {
@@ -52,81 +70,58 @@ export function getTotalAvailableHours(globalConfig: GlobalConfig): number {
   return globalConfig.fteCount * globalConfig.weeklyHours;
 }
 
-/**
- * Decomposes a single service's Required_Hours into the Maintenance and
- * Emergency Response capacity buckets, and estimates the engineering
- * investment (Eliminating Toil) needed to automate it if it isn't already.
- */
+export function getEffectiveAvailableHours(state: DashboardState): number {
+  const totalAvailableHours = getTotalAvailableHours(state.globalConfig);
+  const penalty = state.services.reduce((sum, service) => sum + getExpertisePenaltyHours(service), 0);
+  return Math.max(0, totalAvailableHours - penalty);
+}
+
 export function getServiceBreakdown(service: Service): ServiceBreakdown {
-  const weight = service.weight ?? 1;
-  const automationDivisor = getAutomationDivisor(service);
-  const weightedBase = (service.baseHours * weight) / automationDivisor;
-
-  const maintenanceHours = weightedBase;
-  const emergencyResponseHours = service.hasSME
-    ? 0
-    : weightedBase * (SME_PENALTY_MODIFIER - 1);
-  const eliminatingToilHours = service.isAutomated
-    ? 0
-    : (service.baseHours * weight) / AUTOMATION_REDUCTION_FACTOR;
-
   return {
     id: service.id,
     name: service.name,
-    requiredHours: maintenanceHours + emergencyResponseHours,
-    maintenanceHours,
-    emergencyResponseHours,
-    eliminatingToilHours,
+    isActive: service.isActive,
+    isAutomated: service.isAutomated,
+    hasExpertise: service.hasExpertise,
+    baseHours: getBaseHours(service),
+    requiredHours: getRequiredHours(service),
+    expertisePenaltyHours: getExpertisePenaltyHours(service),
   };
 }
 
 /**
- * Allocates total available capacity across the seven Capacity Budget
- * buckets. Maintenance, Emergency Response and Eliminating Toil are derived
- * directly from the service matrix; Monitoring, Testing and Scaling use
- * modest fixed baselines proportional to estate size/headcount; Innovation
- * absorbs whatever capacity remains (never negative).
+ * Allocates capacity across the four Capacity Budget buckets. Maintenance &
+ * Eliminating Toil is derived directly from active services; Emergency
+ * Response and Testing & Scaling use fixed shares of raw capacity;
+ * Innovation absorbs whatever effective capacity remains (never negative).
  */
 export function getCapacityBuckets(state: DashboardState): CapacityBuckets {
-  const { services, globalConfig } = state;
-  const totalAvailableHours = getTotalAvailableHours(globalConfig);
+  const totalAvailableHours = getTotalAvailableHours(state.globalConfig);
+  const effectiveAvailableHours = getEffectiveAvailableHours(state);
+  const maintenance = getTotalRequiredHours(state.services);
 
-  const breakdowns = services.map(getServiceBreakdown);
-  const maintenance = breakdowns.reduce((sum, s) => sum + s.maintenanceHours, 0);
-  const emergencyResponse = breakdowns.reduce((sum, s) => sum + s.emergencyResponseHours, 0);
-  const eliminatingToil = breakdowns.reduce((sum, s) => sum + s.eliminatingToilHours, 0);
+  const emergencyResponse = totalAvailableHours * EMERGENCY_RESPONSE_SHARE;
+  const testingScaling = totalAvailableHours * TESTING_SCALING_SHARE;
 
-  const monitoring = services.length * 0.5;
-  const testing = services.length * 0.25;
-  const scaling = totalAvailableHours * 0.05;
+  const allocated = maintenance + emergencyResponse + testingScaling;
+  const innovation = Math.max(0, effectiveAvailableHours - allocated);
 
-  const allocated = maintenance + emergencyResponse + eliminatingToil + monitoring + testing + scaling;
-  const innovation = Math.max(0, totalAvailableHours - allocated);
-
-  return {
-    innovation,
-    scaling,
-    maintenance,
-    eliminatingToil,
-    monitoring,
-    emergencyResponse,
-    testing,
-  };
+  return { innovation, maintenance, emergencyResponse, testingScaling };
 }
 
 /**
- * Financial Widget: "Hiring Cost Estimator".
+ * Financial Widget: "External Hiring Costs".
  * ((Required_Hours - Available_Hours) / Total_Available_Weekly_Hours) * Annual_Salary_Baseline
  */
 export function getHiringCost(
   totalRequiredHours: number,
-  totalAvailableHours: number,
+  effectiveAvailableHours: number,
   globalConfig: GlobalConfig,
 ): number {
-  if (totalRequiredHours <= totalAvailableHours) {
+  if (totalRequiredHours <= effectiveAvailableHours) {
     return 0;
   }
-  const deficitHours = totalRequiredHours - totalAvailableHours;
+  const deficitHours = totalRequiredHours - effectiveAvailableHours;
   return (deficitHours / globalConfig.weeklyHours) * globalConfig.annualSalary;
 }
 
@@ -138,20 +133,22 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
   const { services, globalConfig } = state;
 
   const totalAvailableHours = getTotalAvailableHours(globalConfig);
+  const effectiveAvailableHours = getEffectiveAvailableHours(state);
   const totalRequiredHours = getTotalRequiredHours(services);
   const buckets = getCapacityBuckets(state);
-  const operationalToilHours = buckets.eliminatingToil + buckets.maintenance + buckets.emergencyResponse;
-  const operationalToilRatio = totalAvailableHours > 0 ? operationalToilHours / totalAvailableHours : 0;
+  const operationalLoadHours = buckets.maintenance + buckets.emergencyResponse + buckets.testingScaling;
+  const operationalLoadRatio = effectiveAvailableHours > 0 ? operationalLoadHours / effectiveAvailableHours : 0;
 
   return {
     services: services.map(getServiceBreakdown),
     totalAvailableHours,
+    effectiveAvailableHours,
     totalRequiredHours,
     buckets,
-    operationalToilHours,
-    operationalToilRatio,
-    isRedZone: operationalToilRatio > RED_ZONE_THRESHOLD,
-    hiringCost: getHiringCost(totalRequiredHours, totalAvailableHours, globalConfig),
+    operationalLoadHours,
+    operationalLoadRatio,
+    isRedZone: operationalLoadRatio > RED_ZONE_THRESHOLD,
+    hiringCost: getHiringCost(totalRequiredHours, effectiveAvailableHours, globalConfig),
   };
 }
 
@@ -161,8 +158,8 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
  * salary baseline (mirrors the Hiring Cost conversion rate).
  */
 export function getAutomationRoiHours(service: Service): number {
-  const withoutAutomation = getRequiredHours({ ...service, isAutomated: false });
-  const withAutomation = getRequiredHours({ ...service, isAutomated: true });
+  const withoutAutomation = getRequiredHours({ ...service, isActive: true, isAutomated: false });
+  const withAutomation = getRequiredHours({ ...service, isActive: true, isAutomated: true });
   return withoutAutomation - withAutomation;
 }
 
