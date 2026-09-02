@@ -58,7 +58,7 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
         deployHours,
         maintenanceHours,
         isActive: true,
-        hasExpertise: false,
+        hasExpertise: true,
         isAutomated: false,
         isCustom: true,
       };
