@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useDashboard } from "../state/DashboardContext";
 import { ServiceCard } from "./ServiceCard";
+import { getTotalRequiredHours } from "../engine/calculations";
 
 export function ServiceMatrix() {
   const { state, dispatch } = useDashboard();
@@ -13,8 +14,12 @@ export function ServiceMatrix() {
   const handleToggleActive = (serviceId: string) => dispatch({ type: "TOGGLE_ACTIVE", serviceId });
   const handleToggleExpertise = (serviceId: string) => dispatch({ type: "TOGGLE_EXPERTISE", serviceId });
   const handleToggleAutomation = (serviceId: string) => dispatch({ type: "TOGGLE_AUTOMATION", serviceId });
+  const handleChangeWeight = (serviceId: string, weight: number) =>
+    dispatch({ type: "UPDATE_SERVICE_WEIGHT", serviceId, weight });
 
   const activeCount = state.services.filter((s) => s.isActive).length;
+  const totalRequiredHours = getTotalRequiredHours(state.services);
+  const avgHoursPerService = activeCount > 0 ? totalRequiredHours / activeCount : 0;
 
   const handleAddCustomService = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -39,6 +44,11 @@ export function ServiceMatrix() {
         <h2>
           Services ({activeCount}/{state.services.length} active)
         </h2>
+        <p className="service-matrix__scaling-note" data-testid="service-scaling-note">
+          {totalRequiredHours.toFixed(1)} required hrs/wk across {activeCount} active service
+          {activeCount === 1 ? "" : "s"} (~{avgHoursPerService.toFixed(1)} hrs/wk each) — load grows linearly as
+          services are added.
+        </p>
         <button
           type="button"
           className="service-matrix__add-toggle"
@@ -97,6 +107,7 @@ export function ServiceMatrix() {
             onToggleActive={handleToggleActive}
             onToggleExpertise={handleToggleExpertise}
             onToggleAutomation={handleToggleAutomation}
+            onChangeWeight={handleChangeWeight}
           />
         ))}
       </div>

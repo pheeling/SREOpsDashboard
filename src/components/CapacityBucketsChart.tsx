@@ -6,6 +6,8 @@ const BUCKET_META = [
   { key: "maintenance" as const, label: "Maintenance & Eliminating Toil", color: "#c53030" },
   { key: "emergencyResponse" as const, label: "Emergency Response & Troubleshooting", color: "#dd6b20" },
   { key: "testingScaling" as const, label: "Testing & User Scaling", color: "#3182ce" },
+  { key: "securityCompliance" as const, label: "Security & Compliance Patching", color: "#805ad5" },
+  { key: "onCallMonitoring" as const, label: "On-Call & Monitoring", color: "#d69e2e" },
 ];
 
 export function CapacityBucketsChart() {

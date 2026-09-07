@@ -5,19 +5,47 @@ Shows on a dashboard the operational load of infrastructure and helps make infor
 ## SRE Infrastructure Complexity & Operational Capacity Calculator
 
 A React + TypeScript dashboard that quantifies operational toil across a service inventory and helps
-leadership decide between paying down toil, throttling feature work, or hiring.
+leadership decide between paying down toil, throttling feature work, or hiring. It is a practical,
+"operational view" companion to the ideas in Google's
+[Site Reliability Engineering book — Preface](https://sre.google/sre-book/preface/): every hour spent
+on toil (repetitive, manual, non-value-adding operational work) is an hour not spent on innovation, and
+once toil consumes too much of a team's capacity the organization loses the ability to execute, operate,
+or improve its systems.
 
 ### Core concepts
 
-- **Required Hours** — for each service: `baseHours * (hasSME ? 1 : 1.25) * weight / (isAutomated ? 3 : 1)`.
-  - Missing Subject Matter Expertise (SME) applies a `1.25x` "cognitive tax" penalty.
-  - Automation applies the "1/3 Automation Rule", dividing required hours by 3.
-  - High-impact services (e.g. Databases, Internal Networking) carry a `weight` above 1.
-- **Capacity Budget** — available hours (`fteCount * weeklyHours`) are allocated across seven buckets:
-  Innovation, Scaling, Maintenance, Eliminating Toil, Monitoring, Emergency Response, and Testing.
-- **Red Zone** — when `Eliminating Toil + Maintenance + Emergency Response` exceeds 50% of available
-  capacity, the Load Gauge enters the Red Zone, signalling an "Operational Death Spiral".
-- **Hiring Cost Estimator** — `((Required_Hours - Available_Hours) / weeklyHours) * annualSalary`.
+- **Required Hours** — for each active service: `(deployHours + maintenanceHours) / (isAutomated ? 3 : 1) * weight`.
+  - Automation applies the **"1/3 Automation Rule"** (an SRE Book–inspired assumption): automating a
+    service's deployment/maintenance toil divides its required hours by 3.
+  - **Criticality weight** (`weight`, default `1`) scales required hours for high-blast-radius services —
+    e.g. Databases (`2`), Internal Networking / Firewall (`1.5`), EDR (`1.3`) — so that a misconfigured
+    database costs the operations team more effort than a misconfigured printer. Adjustable per service
+    in the Service Matrix (`Criticality Weight` field).
+  - Inactive services contribute `0` hours.
+- **Technical Expertise penalty** — if a team lacks in-house expertise (`hasExpertise = false`) for an
+  active service, `20%` (1/5) of *that service's own* required hours is subtracted from total FTE
+  availability, modeling the "learning curve" cost of operating something the team doesn't understand yet.
+  This is scoped per-service (not a single global cut) so that gaps in niche services don't
+  disproportionately punish teams that are strong everywhere else.
+- **Capacity Budget** — available hours (`fteCount * weeklyHours`) are allocated across six buckets:
+  - **Maintenance & Eliminating Toil** — sum of all active services' Required Hours (linear in the
+    number of services).
+  - **Emergency Response & Troubleshooting** — fixed `10%` of raw available hours, reserved for
+    unplanned incidents.
+  - **Testing & User Scaling** — fixed `5%` of raw available hours, reserved for growth/load prep.
+  - **Security & Compliance Patching** — fixed `8%` of raw available hours, reserved for CVE
+    remediation, audits, and policy upkeep.
+  - **On-Call & Monitoring** — fixed `7%` of raw available hours, reserved for alert triage, dashboards,
+    and SLO tracking.
+  - **New Features / Innovation** — whatever effective capacity remains after the five buckets above
+    (never negative).
+- **Red Zone** — when `Maintenance + Emergency Response + Testing/Scaling + Security/Compliance +
+  On-Call/Monitoring` exceeds **50%** of effective available capacity, the Load Gauge enters the
+  Red Zone: the SRE-mandated ceiling on operational work, below which meaningful innovation can still
+  happen. Crossing it signals an "Operational Death Spiral" — the team is losing control of the estate.
+- **Hiring Cost Estimator** — `((Required_Hours - Available_Hours) / weeklyHours) * annualSalary`. The
+  tool assumes a company prefers to grow its own staff; whenever required hours exceed effective
+  availability, the shortfall is expressed as an annualized *external hiring cost* instead.
 - **Automation ROI Summary Report** — a printable view showing the annualized dollar savings of
   automating each remaining manual service.
 
@@ -33,3 +61,4 @@ npm run build    # type-check and build for production
 npm test         # run the Vitest suite
 npm run lint     # run oxlint
 ```
+

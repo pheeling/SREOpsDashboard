@@ -10,6 +10,7 @@ export type DashboardAction =
   | { type: "TOGGLE_ACTIVE"; serviceId: string }
   | { type: "TOGGLE_EXPERTISE"; serviceId: string }
   | { type: "TOGGLE_AUTOMATION"; serviceId: string }
+  | { type: "UPDATE_SERVICE_WEIGHT"; serviceId: string; weight: number }
   | { type: "ADD_CUSTOM_SERVICE"; payload: NewCustomService }
   | { type: "UPDATE_GLOBAL_CONFIG"; payload: Partial<GlobalConfig> }
   | { type: "RESET"; payload: DashboardState };
@@ -43,6 +44,15 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
       return toggleServiceField(state, action.serviceId, "hasExpertise");
     case "TOGGLE_AUTOMATION":
       return toggleServiceField(state, action.serviceId, "isAutomated");
+    case "UPDATE_SERVICE_WEIGHT": {
+      const safeWeight = Number.isFinite(action.weight) && action.weight > 0 ? action.weight : 1;
+      return {
+        ...state,
+        services: state.services.map((service) =>
+          service.id === action.serviceId ? { ...service, weight: safeWeight } : service,
+        ),
+      };
+    }
     case "ADD_CUSTOM_SERVICE": {
       const { name, deployHours, maintenanceHours } = action.payload;
       const baseSlug = slugify(name) || "custom_service";

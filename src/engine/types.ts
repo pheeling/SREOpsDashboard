@@ -31,6 +31,14 @@ export interface Service {
   isAutomated: boolean;
   /** Whether this service was added by the user (vs. a standard seeded service). */
   isCustom?: boolean;
+  /**
+   * Criticality/"blast-radius" multiplier applied to the service's required
+   * hours. Defaults to 1 (see `DEFAULT_SERVICE_WEIGHT`); high-impact
+   * services (e.g. Databases, Internal Networking, Firewall) can be seeded
+   * with a value above 1 to reflect that an outage or misconfiguration
+   * there costs the operations team disproportionately more effort.
+   */
+  weight?: number;
 }
 
 export interface DashboardState {
@@ -48,6 +56,10 @@ export interface CapacityBuckets {
   emergencyResponse: number;
   /** Testing & User Scaling: prep time for user growth. */
   testingScaling: number;
+  /** Security & Compliance Patching: reserve for CVE remediation, audits, policy upkeep. */
+  securityCompliance: number;
+  /** On-Call & Monitoring: reserve for alert triage, dashboards, SLO tracking. */
+  onCallMonitoring: number;
 }
 
 export interface ServiceBreakdown {
@@ -56,9 +68,11 @@ export interface ServiceBreakdown {
   isActive: boolean;
   isAutomated: boolean;
   hasExpertise: boolean;
+  /** Criticality multiplier applied to required hours (see `Service.weight`). */
+  weight: number;
   /** Raw Base Hours = Deploy Hours + Maintenance Hours (before automation). */
   baseHours: number;
-  /** Hours required after the automation divisor is applied (0 when inactive). */
+  /** Hours required after the automation divisor and weight are applied (0 when inactive). */
   requiredHours: number;
   /** Availability penalty (hours) incurred because the team lacks expertise. */
   expertisePenaltyHours: number;
@@ -73,7 +87,7 @@ export interface CapacityReport {
   /** Sum of active services' required operational hours. */
   totalRequiredHours: number;
   buckets: CapacityBuckets;
-  /** maintenance + emergencyResponse + testingScaling. */
+  /** maintenance + emergencyResponse + testingScaling + securityCompliance + onCallMonitoring. */
   operationalLoadHours: number;
   /** operationalLoadHours / effectiveAvailableHours, expressed 0..1 (or higher if over capacity). */
   operationalLoadRatio: number;
