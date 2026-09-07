@@ -26,6 +26,15 @@ export const EMERGENCY_RESPONSE_SHARE = 0.1;
 /** Fixed share of raw capacity reserved for user-growth prep/testing. */
 export const TESTING_SCALING_SHARE = 0.05;
 
+/** Fixed share of raw capacity reserved for security/compliance patching (CVE remediation, audits). */
+export const SECURITY_COMPLIANCE_SHARE = 0.08;
+
+/** Fixed share of raw capacity reserved for on-call rotations, alert triage and SLO/monitoring upkeep. */
+export const ON_CALL_MONITORING_SHARE = 0.07;
+
+/** Default criticality/"blast-radius" weight applied to a service when none is specified. */
+export const DEFAULT_SERVICE_WEIGHT = 1;
+
 /** SRE-mandated ceiling on manual operational work as a share of total capacity. */
 export const RED_ZONE_THRESHOLD = 0.5;
 
@@ -36,6 +45,11 @@ export function getAutomationDivisor(service: Pick<Service, "isAutomated">): num
   return service.isAutomated ? AUTOMATION_REDUCTION_FACTOR : 1;
 }
 
+/** Criticality/"blast-radius" multiplier for a service; defaults to 1 when unset. */
+export function getServiceWeight(service: Pick<Service, "weight">): number {
+  return service.weight ?? DEFAULT_SERVICE_WEIGHT;
+}
+
 /** Base Hours = Deploying Hours + Maintenance Hours (before automation is applied). */
 export function getBaseHours(service: Pick<Service, "deployHours" | "maintenanceHours">): number {
   return service.deployHours + service.maintenanceHours;
@@ -43,12 +57,12 @@ export function getBaseHours(service: Pick<Service, "deployHours" | "maintenance
 
 /**
  * Required_Hours for a single service: Base Hours divided by 3 when
- * automation is toggled on. Inactive services contribute 0 hours to the
- * active workload.
+ * automation is toggled on, then multiplied by the service's criticality
+ * weight. Inactive services contribute 0 hours to the active workload.
  */
 export function getRequiredHours(service: Service): number {
   if (!service.isActive) return 0;
-  return getBaseHours(service) / getAutomationDivisor(service);
+  return (getBaseHours(service) / getAutomationDivisor(service)) * getServiceWeight(service);
 }
 
 /**
@@ -83,6 +97,7 @@ export function getServiceBreakdown(service: Service): ServiceBreakdown {
     isActive: service.isActive,
     isAutomated: service.isAutomated,
     hasExpertise: service.hasExpertise,
+    weight: getServiceWeight(service),
     baseHours: getBaseHours(service),
     requiredHours: getRequiredHours(service),
     expertisePenaltyHours: getExpertisePenaltyHours(service),
@@ -90,10 +105,11 @@ export function getServiceBreakdown(service: Service): ServiceBreakdown {
 }
 
 /**
- * Allocates capacity across the four Capacity Budget buckets. Maintenance &
+ * Allocates capacity across the six Capacity Budget buckets. Maintenance &
  * Eliminating Toil is derived directly from active services; Emergency
- * Response and Testing & Scaling use fixed shares of raw capacity;
- * Innovation absorbs whatever effective capacity remains (never negative).
+ * Response, Testing & Scaling, Security & Compliance Patching, and On-Call &
+ * Monitoring use fixed shares of raw capacity; Innovation absorbs whatever
+ * effective capacity remains (never negative).
  */
 export function getCapacityBuckets(state: DashboardState): CapacityBuckets {
   const totalAvailableHours = getTotalAvailableHours(state.globalConfig);
@@ -102,11 +118,13 @@ export function getCapacityBuckets(state: DashboardState): CapacityBuckets {
 
   const emergencyResponse = totalAvailableHours * EMERGENCY_RESPONSE_SHARE;
   const testingScaling = totalAvailableHours * TESTING_SCALING_SHARE;
+  const securityCompliance = totalAvailableHours * SECURITY_COMPLIANCE_SHARE;
+  const onCallMonitoring = totalAvailableHours * ON_CALL_MONITORING_SHARE;
 
-  const allocated = maintenance + emergencyResponse + testingScaling;
+  const allocated = maintenance + emergencyResponse + testingScaling + securityCompliance + onCallMonitoring;
   const innovation = Math.max(0, effectiveAvailableHours - allocated);
 
-  return { innovation, maintenance, emergencyResponse, testingScaling };
+  return { innovation, maintenance, emergencyResponse, testingScaling, securityCompliance, onCallMonitoring };
 }
 
 /**
@@ -136,7 +154,12 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
   const effectiveAvailableHours = getEffectiveAvailableHours(state);
   const totalRequiredHours = getTotalRequiredHours(services);
   const buckets = getCapacityBuckets(state);
-  const operationalLoadHours = buckets.maintenance + buckets.emergencyResponse + buckets.testingScaling;
+  const operationalLoadHours =
+    buckets.maintenance +
+    buckets.emergencyResponse +
+    buckets.testingScaling +
+    buckets.securityCompliance +
+    buckets.onCallMonitoring;
   const operationalLoadRatio = effectiveAvailableHours > 0 ? operationalLoadHours / effectiveAvailableHours : 1;
 
   return {

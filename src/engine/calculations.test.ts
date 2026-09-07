@@ -2,14 +2,19 @@ import { describe, expect, it } from "vitest";
 import type { DashboardState, Service } from "./types";
 import {
   AUTOMATION_REDUCTION_FACTOR,
+  DEFAULT_SERVICE_WEIGHT,
   EXPERTISE_AVAILABILITY_PENALTY,
+  ON_CALL_MONITORING_SHARE,
+  SECURITY_COMPLIANCE_SHARE,
   computeCapacityReport,
   getAutomationRoiHours,
   getBaseHours,
+  getCapacityBuckets,
   getEffectiveAvailableHours,
   getExpertisePenaltyHours,
   getHiringCost,
   getRequiredHours,
+  getServiceWeight,
   getTotalAvailableHours,
   getTotalRequiredHours,
 } from "./calculations";
@@ -77,6 +82,21 @@ describe("getRequiredHours", () => {
     const service = makeService({ deployHours: 6, maintenanceHours: 3, isAutomated: true });
     expect(getRequiredHours(service)).toBeCloseTo(9 / AUTOMATION_REDUCTION_FACTOR);
   });
+
+  it("defaults to a weight of 1 when unset", () => {
+    const service = makeService({ deployHours: 5, maintenanceHours: 3 });
+    expect(getServiceWeight(service)).toBe(DEFAULT_SERVICE_WEIGHT);
+  });
+
+  it("multiplies required hours by the service's criticality weight", () => {
+    const service = makeService({ deployHours: 5, maintenanceHours: 3, weight: 2 });
+    expect(getRequiredHours(service)).toBe(16);
+  });
+
+  it("applies weight after the automation divisor", () => {
+    const service = makeService({ deployHours: 6, maintenanceHours: 3, isAutomated: true, weight: 2 });
+    expect(getRequiredHours(service)).toBeCloseTo((9 / AUTOMATION_REDUCTION_FACTOR) * 2);
+  });
 });
 
 describe("getExpertisePenaltyHours", () => {
@@ -118,6 +138,19 @@ describe("getEffectiveAvailableHours", () => {
     };
     // raw = 200, penalty = 10 * 0.2 = 2
     expect(getEffectiveAvailableHours(state)).toBeCloseTo(198);
+  });
+});
+
+describe("getCapacityBuckets", () => {
+  it("reserves the Security/Compliance and On-Call/Monitoring shares from raw available hours", () => {
+    const state: DashboardState = {
+      globalConfig: { fteCount: 10, weeklyHours: 40, annualSalary: 150000 },
+      services: [],
+    };
+    const buckets = getCapacityBuckets(state);
+    const totalAvailableHours = getTotalAvailableHours(state.globalConfig);
+    expect(buckets.securityCompliance).toBeCloseTo(totalAvailableHours * SECURITY_COMPLIANCE_SHARE);
+    expect(buckets.onCallMonitoring).toBeCloseTo(totalAvailableHours * ON_CALL_MONITORING_SHARE);
   });
 });
 
@@ -172,8 +205,11 @@ describe("computeCapacityReport - SRE scenario validation", () => {
       hasExpertise: true,
       isAutomated: true,
     }));
+    // With Security/Compliance and On-Call/Monitoring buckets now reserving a
+    // combined 15% of raw capacity (on top of Emergency Response + Testing),
+    // a larger automated team is needed to stay under the 50% Red Zone line.
     const state: DashboardState = {
-      globalConfig: { fteCount: 25, weeklyHours: 40, annualSalary: 150000 },
+      globalConfig: { fteCount: 50, weeklyHours: 40, annualSalary: 150000 },
       services,
     };
 

@@ -6,11 +6,19 @@ interface ServiceCardProps {
   onToggleActive: (id: string) => void;
   onToggleExpertise: (id: string) => void;
   onToggleAutomation: (id: string) => void;
+  onChangeWeight: (id: string, weight: number) => void;
 }
 
-export function ServiceCard({ service, onToggleActive, onToggleExpertise, onToggleAutomation }: ServiceCardProps) {
+export function ServiceCard({
+  service,
+  onToggleActive,
+  onToggleExpertise,
+  onToggleAutomation,
+  onChangeWeight,
+}: ServiceCardProps) {
   const requiredHours = getRequiredHours(service);
   const baseHours = getBaseHours(service);
+  const weight = service.weight ?? 1;
 
   return (
     <div
@@ -58,6 +66,20 @@ export function ServiceCard({ service, onToggleActive, onToggleExpertise, onTogg
           Expertise
         </label>
       </div>
+
+      <label className="service-card__weight">
+        Criticality Weight
+        <input
+          type="number"
+          min={0.5}
+          max={3}
+          step={0.1}
+          value={weight}
+          disabled={!service.isActive}
+          onChange={(e) => onChangeWeight(service.id, Number(e.target.value))}
+          aria-label={`${service.name} Criticality Weight`}
+        />
+      </label>
     </div>
   );
 }

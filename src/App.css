@@ -158,6 +158,13 @@
   flex-wrap: wrap;
 }
 
+.service-matrix__scaling-note {
+  flex-basis: 100%;
+  font-size: 0.8rem;
+  color: #57606a;
+  margin: 0;
+}
+
 .service-matrix__add-toggle {
   padding: 0.4rem 0.8rem;
   border-radius: 6px;
@@ -295,6 +302,21 @@
   background: #ebf8ff;
   color: #2b6cb0;
   font-weight: 600;
+}
+
+.service-card__weight {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: #57606a;
+  margin-top: 0.5rem;
+}
+
+.service-card__weight input {
+  width: 3.5rem;
+  padding: 0.15rem 0.3rem;
 }
 
 /* --- Summary Report --- */
