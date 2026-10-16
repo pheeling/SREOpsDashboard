@@ -15,7 +15,7 @@ export function CapacityBucketsChart() {
   const report = computeCapacityReport(state);
   const { buckets } = report;
   const total = Object.values(buckets).reduce((sum, value) => sum + value, 0);
-  const capacity = report.totalAvailableHours;
+  const capacity = report.effectiveAvailableHours;
   const bucketMetrics = BUCKET_META.map((bucket) => {
     const value = buckets[bucket.key];
     return {
@@ -39,7 +39,7 @@ export function CapacityBucketsChart() {
             key={key}
             className="capacity-chart__segment"
             style={{ width: `${bucketShare}%`, backgroundColor: color }}
-            title={`${label}: ${value.toFixed(1)} hrs (${bucketShare.toFixed(1)}% of bucket hours; ${capacityPercent.toFixed(1)}% of FTE capacity)`}
+            title={`${label}: ${value.toFixed(1)} hrs (${bucketShare.toFixed(1)}% of bucket hours; ${capacityPercent.toFixed(1)}% of effective capacity)`}
             data-testid={`capacity-segment-${key}`}
           />
         ))}
@@ -51,7 +51,7 @@ export function CapacityBucketsChart() {
             <span className="capacity-chart__legend-label">{label}</span>
             <span className="capacity-chart__legend-value">
               {value.toFixed(1)} hrs ({bucketShare.toFixed(1)}% of bucket hours;{" "}
-              {capacityPercent.toFixed(1)}% of FTE capacity)
+              {capacityPercent.toFixed(1)}% of effective capacity)
             </span>
           </li>
         ))}

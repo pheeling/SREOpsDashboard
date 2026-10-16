@@ -1,4 +1,5 @@
 import { useDashboard } from "../state/DashboardContext";
+import { DEFAULT_CAPACITY_EFFICIENCY_FACTOR } from "../engine/calculations";
 
 export function GlobalConfigPanel() {
   const { state, dispatch } = useDashboard();
@@ -26,6 +27,21 @@ export function GlobalConfigPanel() {
           value={globalConfig.weeklyHours}
           onChange={(e) =>
             dispatch({ type: "UPDATE_GLOBAL_CONFIG", payload: { weeklyHours: Number(e.target.value) } })
+          }
+        />
+      </label>
+      <label>
+        Effective Capacity (%)
+        <input
+          type="number"
+          min={0}
+          max={100}
+          value={(globalConfig.capacityEfficiencyFactor ?? DEFAULT_CAPACITY_EFFICIENCY_FACTOR) * 100}
+          onChange={(e) =>
+            dispatch({
+              type: "UPDATE_GLOBAL_CONFIG",
+              payload: { capacityEfficiencyFactor: Number(e.target.value) / 100 },
+            })
           }
         />
       </label>

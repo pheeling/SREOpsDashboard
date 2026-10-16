@@ -20,16 +20,19 @@ export const AUTOMATION_REDUCTION_FACTOR = 3;
 /** Effort multiplier applied to services the team lacks expertise to operate. */
 export const EXPERTISE_EFFORT_MULTIPLIER = 1.25;
 
-/** Fixed share of raw capacity reserved for unexpected incidents/outages. */
+/** Default share of contracted hours available for technical work after overhead. */
+export const DEFAULT_CAPACITY_EFFICIENCY_FACTOR = 0.8;
+
+/** Fixed share of effective capacity reserved for unexpected incidents/outages. */
 export const EMERGENCY_RESPONSE_SHARE = 0.1;
 
-/** Fixed share of raw capacity reserved for user-growth prep/testing. */
+/** Fixed share of effective capacity reserved for user-growth prep/testing. */
 export const TESTING_SCALING_SHARE = 0.05;
 
-/** Fixed share of raw capacity reserved for security/compliance patching (CVE remediation, audits). */
+/** Fixed share of effective capacity reserved for security/compliance patching (CVE remediation, audits). */
 export const SECURITY_COMPLIANCE_SHARE = 0.08;
 
-/** Fixed share of raw capacity reserved for on-call rotations, alert triage and SLO/monitoring upkeep. */
+/** Fixed share of effective capacity reserved for on-call rotations, alert triage and SLO/monitoring upkeep. */
 export const ON_CALL_MONITORING_SHARE = 0.07;
 
 /** Default criticality/"blast-radius" weight applied to a service when none is specified. */
@@ -85,6 +88,14 @@ export function getTotalAvailableHours(globalConfig: GlobalConfig): number {
   return finiteNumber(globalConfig.fteCount) * finiteNumber(globalConfig.weeklyHours);
 }
 
+export function getEffectiveCapacityHours(globalConfig: GlobalConfig): number {
+  const efficiencyFactor = Math.min(
+    1,
+    Math.max(0, finiteNumber(globalConfig.capacityEfficiencyFactor, DEFAULT_CAPACITY_EFFICIENCY_FACTOR)),
+  );
+  return getTotalAvailableHours(globalConfig) * efficiencyFactor;
+}
+
 export function getEffectiveAvailableHours(state: DashboardState): number {
   return getTotalAvailableHours(state.globalConfig);
 }
@@ -110,14 +121,14 @@ export function getServiceBreakdown(service: Service): ServiceBreakdown {
  * Reduction absorbs whatever effective capacity remains (never negative).
  */
 export function getCapacityBuckets(state: DashboardState): CapacityBuckets {
-  const totalAvailableHours = getTotalAvailableHours(state.globalConfig);
+  const effectiveCapacityHours = getEffectiveCapacityHours(state.globalConfig);
   const effectiveAvailableHours = getEffectiveAvailableHours(state);
   const maintenance = getTotalRequiredHours(state.services);
 
-  const emergencyResponse = totalAvailableHours * EMERGENCY_RESPONSE_SHARE;
-  const testingScaling = totalAvailableHours * TESTING_SCALING_SHARE;
-  const securityCompliance = totalAvailableHours * SECURITY_COMPLIANCE_SHARE;
-  const onCallMonitoring = totalAvailableHours * ON_CALL_MONITORING_SHARE;
+  const emergencyResponse = effectiveCapacityHours * EMERGENCY_RESPONSE_SHARE;
+  const testingScaling = effectiveCapacityHours * TESTING_SCALING_SHARE;
+  const securityCompliance = effectiveCapacityHours * SECURITY_COMPLIANCE_SHARE;
+  const onCallMonitoring = effectiveCapacityHours * ON_CALL_MONITORING_SHARE;
 
   const allocated = maintenance + emergencyResponse + testingScaling + securityCompliance + onCallMonitoring;
   const innovation = Math.max(0, effectiveAvailableHours - allocated);

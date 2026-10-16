@@ -31,10 +31,10 @@ or improve its systems.
     the number of services).
   - **Emergency Response & Troubleshooting** — fixed `10%` of raw available hours, reserved for
     unplanned incidents.
-  - **Testing & User Scaling** — fixed `5%` of raw available hours, reserved for growth/load prep.
-  - **Security & Compliance Patching** — fixed `8%` of raw available hours, reserved for CVE
+  - **Testing & User Scaling** — fixed `5%` of effective capacity hours, reserved for growth/load prep.
+  - **Security & Compliance Patching** — fixed `8%` of effective capacity hours, reserved for CVE
     remediation, audits, and policy upkeep.
-  - **On-Call & Monitoring** — fixed `7%` of raw available hours, reserved for alert triage, dashboards,
+  - **On-Call & Monitoring** — fixed `7%` of effective capacity hours, reserved for alert triage, dashboards,
     and SLO tracking.
   - **New Features / Innovation & Toil Reduction** — engineering capacity for feature work, automation,
     CI/CD improvements, and self-healing tooling; whatever effective capacity remains after the five
@@ -50,6 +50,8 @@ or improve its systems.
   50% operational balance. At or below 50% load the cost is `$0`.
 - **Automation ROI Summary Report** — a printable view showing the annualized dollar savings of
   automating each remaining manual service.
+- **On-Call Staffing Guardrail** — warns when fewer than four engineers are configured, as a team of that size
+  cannot sustain a healthy 24/7 on-call rotation.
 
 State is normalized (`globalConfig` + `services[]`), persisted to `LocalStorage`, and driven by a
 reducer so UI changes cascade instantly through the capacity engine.

@@ -87,6 +87,12 @@
   font-weight: bold;
 }
 
+.warning-banner--staffing {
+  background: #fffaf0;
+  border-color: #dd6b20;
+  color: #7b341e;
+}
+
 /* --- Load Gauge (half-circle) --- */
 .load-gauge {
   text-align: center;
