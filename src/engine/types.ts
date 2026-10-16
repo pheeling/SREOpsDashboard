@@ -74,15 +74,13 @@ export interface ServiceBreakdown {
   baseHours: number;
   /** Hours required after the automation divisor and weight are applied (0 when inactive). */
   requiredHours: number;
-  /** Availability penalty (hours) incurred because the team lacks expertise. */
-  expertisePenaltyHours: number;
 }
 
 export interface CapacityReport {
   services: ServiceBreakdown[];
   /** Raw FTE capacity: fteCount * weeklyHours. */
   totalAvailableHours: number;
-  /** Available hours after the expertise-gap availability penalty is applied. */
+  /** Alias for totalAvailableHours, retained for consumers of the capacity report. */
   effectiveAvailableHours: number;
   /** Sum of active services' required operational hours. */
   totalRequiredHours: number;

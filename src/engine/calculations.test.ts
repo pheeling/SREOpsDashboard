@@ -3,7 +3,7 @@ import type { DashboardState, Service } from "./types";
 import {
   AUTOMATION_REDUCTION_FACTOR,
   DEFAULT_SERVICE_WEIGHT,
-  EXPERTISE_AVAILABILITY_PENALTY,
+  EXPERTISE_EFFORT_MULTIPLIER,
   ON_CALL_MONITORING_SHARE,
   SECURITY_COMPLIANCE_SHARE,
   computeCapacityReport,
@@ -11,7 +11,6 @@ import {
   getBaseHours,
   getCapacityBuckets,
   getEffectiveAvailableHours,
-  getExpertisePenaltyHours,
   getHiringCost,
   getRequiredHours,
   getServiceWeight,
@@ -107,22 +106,11 @@ describe("getRequiredHours", () => {
     const service = makeService({ deployHours: 6, maintenanceHours: 3, isAutomated: true, weight: 2 });
     expect(getRequiredHours(service)).toBeCloseTo((9 / AUTOMATION_REDUCTION_FACTOR) * 2);
   });
-});
 
-describe("getExpertisePenaltyHours", () => {
-  it("is 0 when the team has expertise", () => {
-    const service = makeService({ hasExpertise: true, deployHours: 4, maintenanceHours: 4 });
-    expect(getExpertisePenaltyHours(service)).toBe(0);
-  });
-
-  it("is 0 when the service is inactive, even without expertise", () => {
-    const service = makeService({ hasExpertise: false, isActive: false });
-    expect(getExpertisePenaltyHours(service)).toBe(0);
-  });
-
-  it("reduces availability by 20% of the service's required hours when expertise is missing", () => {
-    const service = makeService({ hasExpertise: false, deployHours: 4, maintenanceHours: 4, isAutomated: false });
-    expect(getExpertisePenaltyHours(service)).toBeCloseTo(8 * EXPERTISE_AVAILABILITY_PENALTY);
+  it("increases a service's required hours by 25% when expertise is missing", () => {
+    const withExpertise = getRequiredHours(makeService({ deployHours: 4, maintenanceHours: 4 }));
+    const withoutExpertise = getRequiredHours(makeService({ deployHours: 4, maintenanceHours: 4, hasExpertise: false }));
+    expect(withoutExpertise).toBeCloseTo(withExpertise * EXPERTISE_EFFORT_MULTIPLIER);
   });
 });
 
@@ -153,13 +141,16 @@ describe("getTotalAvailableHours / getTotalRequiredHours", () => {
 });
 
 describe("getEffectiveAvailableHours", () => {
-  it("subtracts the expertise penalty from raw available hours", () => {
+  it("remains equal to FTE capacity regardless of service expertise", () => {
     const state: DashboardState = {
       globalConfig: { fteCount: 5, weeklyHours: 40, annualSalary: 150000 },
       services: [makeService({ deployHours: 10, maintenanceHours: 0, hasExpertise: false })],
     };
-    // raw = 200, penalty = 10 * 0.2 = 2
-    expect(getEffectiveAvailableHours(state)).toBeCloseTo(198);
+    expect(getEffectiveAvailableHours(state)).toBe(200);
+    expect(getEffectiveAvailableHours({
+      ...state,
+      services: state.services.map((service) => ({ ...service, hasExpertise: true })),
+    })).toBe(200);
   });
 });
 
@@ -270,10 +261,10 @@ describe("computeCapacityReport - SRE scenario validation", () => {
       services: [{ ...state.services[0], isAutomated: true, hasExpertise: true }],
     });
 
-    expect(automatedWithExpertise.buckets.maintenance).toBeCloseTo(manualWithoutExpertise.buckets.maintenance / 3);
-    expect(automatedWithExpertise.effectiveAvailableHours).toBeGreaterThan(
-      manualWithoutExpertise.effectiveAvailableHours,
+    expect(manualWithoutExpertise.buckets.maintenance).toBeCloseTo(
+      automatedWithExpertise.buckets.maintenance * AUTOMATION_REDUCTION_FACTOR * EXPERTISE_EFFORT_MULTIPLIER,
     );
+    expect(automatedWithExpertise.effectiveAvailableHours).toBe(manualWithoutExpertise.effectiveAvailableHours);
   });
 
   it("Scenario 1: The Overloaded Startup breaches the Red Zone with a large hiring cost", () => {
@@ -338,7 +329,7 @@ describe("computeCapacityReport - SRE scenario validation", () => {
     expect(withDeactivated.operationalLoadRatio).toBeLessThan(baseline.operationalLoadRatio);
   });
 
-  it("Scenario 4: The Expertise Gap increases operational load via the availability penalty", () => {
+  it("Scenario 4: The Expertise Gap increases service workload without changing capacity", () => {
     const withExpertise: DashboardState = {
       globalConfig: { fteCount: 10, weeklyHours: 40, annualSalary: 150000 },
       services: DEFAULT_SERVICES.map((s) => ({ ...s, hasExpertise: true })),
@@ -353,7 +344,9 @@ describe("computeCapacityReport - SRE scenario validation", () => {
     const baseline = computeCapacityReport(withExpertise);
     const withGap = computeCapacityReport(withoutExpertiseForCriticalServices);
 
-    expect(withGap.effectiveAvailableHours).toBeLessThan(baseline.effectiveAvailableHours);
+    expect(withGap.totalAvailableHours).toBe(baseline.totalAvailableHours);
+    expect(withGap.effectiveAvailableHours).toBe(baseline.effectiveAvailableHours);
+    expect(withGap.totalRequiredHours).toBeGreaterThan(baseline.totalRequiredHours);
     expect(withGap.operationalLoadRatio).toBeGreaterThan(baseline.operationalLoadRatio);
   });
 });

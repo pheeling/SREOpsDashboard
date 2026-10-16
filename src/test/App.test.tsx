@@ -30,6 +30,20 @@ describe("App", () => {
     expect(after).not.toBe(before);
   });
 
+  it("toggling expertise off increases that service's displayed required hours by 25%", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const card = screen.getByTestId("service-card-databases");
+    const badge = card.querySelector(".service-card__badge");
+    const before = Number(badge?.textContent?.match(/[\d.]+/)?.[0]);
+
+    await user.click(within(card).getByLabelText("Databases Expertise"));
+
+    const after = Number(badge?.textContent?.match(/[\d.]+/)?.[0]);
+    expect(after).toBeCloseTo(before * 1.25);
+  });
+
   it("deactivating a service shows 0 hrs and mutes the card", async () => {
     const user = userEvent.setup();
     render(<App />);

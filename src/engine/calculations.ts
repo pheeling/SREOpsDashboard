@@ -17,8 +17,8 @@ import type {
 /** Divisor applied to a service's hours once it has been automated ("1/3 Automation Rule"). */
 export const AUTOMATION_REDUCTION_FACTOR = 3;
 
-/** Fraction of a service's operational hours reduced from FTE availability when the team lacks expertise. */
-export const EXPERTISE_AVAILABILITY_PENALTY = 0.2;
+/** Effort multiplier applied to services the team lacks expertise to operate. */
+export const EXPERTISE_EFFORT_MULTIPLIER = 1.25;
 
 /** Fixed share of raw capacity reserved for unexpected incidents/outages. */
 export const EMERGENCY_RESPONSE_SHARE = 0.1;
@@ -68,22 +68,13 @@ export function getBaseHours(service: Pick<Service, "deployHours" | "maintenance
 /**
  * Required_Hours for a single service: Base Hours divided by 3 when
  * automation is toggled on, then multiplied by the service's criticality
- * weight. Inactive services contribute 0 hours to the active workload.
+ * weight, then multiplied by 1.25 when the team lacks expertise. Inactive
+ * services contribute 0 hours to the active workload.
  */
 export function getRequiredHours(service: Service): number {
   if (!service.isActive) return 0;
-  return (getBaseHours(service) / getAutomationDivisor(service)) * getServiceWeight(service);
-}
-
-/**
- * The availability penalty (in hours) incurred because the team lacks
- * technical expertise for this service: 20% of the service's own required
- * hours, subtracted from overall FTE availability. Only applies to active
- * services.
- */
-export function getExpertisePenaltyHours(service: Service): number {
-  if (!service.isActive || service.hasExpertise) return 0;
-  return getRequiredHours(service) * EXPERTISE_AVAILABILITY_PENALTY;
+  const expertiseMultiplier = service.hasExpertise ? 1 : EXPERTISE_EFFORT_MULTIPLIER;
+  return (getBaseHours(service) / getAutomationDivisor(service)) * getServiceWeight(service) * expertiseMultiplier;
 }
 
 export function getTotalRequiredHours(services: Service[]): number {
@@ -95,9 +86,7 @@ export function getTotalAvailableHours(globalConfig: GlobalConfig): number {
 }
 
 export function getEffectiveAvailableHours(state: DashboardState): number {
-  const totalAvailableHours = getTotalAvailableHours(state.globalConfig);
-  const penalty = state.services.reduce((sum, service) => sum + getExpertisePenaltyHours(service), 0);
-  return Math.max(0, totalAvailableHours - penalty);
+  return getTotalAvailableHours(state.globalConfig);
 }
 
 export function getServiceBreakdown(service: Service): ServiceBreakdown {
@@ -110,7 +99,6 @@ export function getServiceBreakdown(service: Service): ServiceBreakdown {
     weight: getServiceWeight(service),
     baseHours: getBaseHours(service),
     requiredHours: getRequiredHours(service),
-    expertisePenaltyHours: getExpertisePenaltyHours(service),
   };
 }
 
