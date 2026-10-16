@@ -179,18 +179,23 @@ describe("getCapacityBuckets", () => {
 describe("getHiringCost", () => {
   const globalConfig = { fteCount: 5, weeklyHours: 40, annualSalary: 150000 };
 
-  it("returns 0 when required hours do not exceed available hours", () => {
-    expect(getHiringCost(150, 200, globalConfig)).toBe(0);
+  it("returns 0 when operational load is at or below 50% of available hours", () => {
+    expect(getHiringCost(100, 200, globalConfig)).toBe(0);
+    expect(getHiringCost(50, 200, globalConfig)).toBe(0);
   });
 
-  it("computes the fractional-FTE hiring cost when there is a deficit", () => {
-    // deficit of 40 hours / 40 weekly hours = 1 FTE => full annual salary
-    expect(getHiringCost(240, 200, globalConfig)).toBeCloseTo(150000);
+  it("returns a positive cost as soon as load exceeds 50%", () => {
+    expect(getHiringCost(100.2, 200, globalConfig)).toBeGreaterThan(0);
   });
 
-  it("scales proportionally for partial FTE deficits", () => {
-    // deficit of 20 hours / 40 = 0.5 FTE => half annual salary
-    expect(getHiringCost(220, 200, globalConfig)).toBeCloseTo(75000);
+  it("computes FTE shortfall using 50% of weekly hours per hire", () => {
+    // deficit of 20 hours / (0.5 * 40) = 1 FTE => full annual salary
+    expect(getHiringCost(120, 200, globalConfig)).toBeCloseTo(150000);
+  });
+
+  it("returns a positive cost at 100% load", () => {
+    // deficit of 100 hours / 20 = 5 FTE
+    expect(getHiringCost(200, 200, globalConfig)).toBeCloseTo(750000);
   });
 
   it("returns a finite value when weekly hours are zero or invalid", () => {

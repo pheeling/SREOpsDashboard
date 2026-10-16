@@ -139,22 +139,22 @@ export function getCapacityBuckets(state: DashboardState): CapacityBuckets {
 
 /**
  * Financial Widget: "External Hiring Costs".
- * ((Required_Hours - Available_Hours) / Total_Available_Weekly_Hours) * Annual_Salary_Baseline
+ * Each hire contributes 50% of weekly hours to operational work, restoring the
+ * team to the 50% operational limit:
+ * max(0, Operational_Hours - 0.5 * Available_Hours) / (0.5 * weeklyHours) * Annual_Salary
  */
 export function getHiringCost(
-  totalRequiredHours: number,
+  operationalHours: number,
   effectiveAvailableHours: number,
   globalConfig: GlobalConfig,
 ): number {
-  totalRequiredHours = finiteNumber(totalRequiredHours);
+  operationalHours = finiteNumber(operationalHours);
   effectiveAvailableHours = finiteNumber(effectiveAvailableHours);
   const weeklyHours = finiteNumber(globalConfig.weeklyHours);
   const annualSalary = finiteNumber(globalConfig.annualSalary);
-  if (totalRequiredHours <= effectiveAvailableHours) {
-    return 0;
-  }
-  const deficitHours = totalRequiredHours - effectiveAvailableHours;
-  return weeklyHours > 0 ? (deficitHours / weeklyHours) * annualSalary : 0;
+  const toilDeficit = Math.max(0, operationalHours - RED_ZONE_THRESHOLD * effectiveAvailableHours);
+  if (toilDeficit <= 0 || weeklyHours <= 0) return 0;
+  return (toilDeficit / (RED_ZONE_THRESHOLD * weeklyHours)) * annualSalary;
 }
 
 /**
@@ -195,7 +195,7 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
     operationalLoadHours,
     operationalLoadRatio,
     isRedZone: operationalLoadRatio > RED_ZONE_THRESHOLD,
-    hiringCost: getHiringCost(totalRequiredHours, effectiveAvailableHours, globalConfig),
+    hiringCost: getHiringCost(operationalLoadHours, effectiveAvailableHours, globalConfig),
   };
 }
 
