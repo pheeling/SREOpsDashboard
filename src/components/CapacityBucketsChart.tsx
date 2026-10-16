@@ -2,8 +2,8 @@ import { useDashboard } from "../state/DashboardContext";
 import { computeCapacityReport } from "../engine/calculations";
 
 const BUCKET_META = [
-  { key: "innovation" as const, label: "New Features / Innovation", color: "#2f855a" },
-  { key: "maintenance" as const, label: "Maintenance & Eliminating Toil", color: "#c53030" },
+  { key: "innovation" as const, label: "New Features / Innovation & Toil Reduction", color: "#2f855a" },
+  { key: "maintenance" as const, label: "Routine Operations & Maintenance Toil", color: "#c53030" },
   { key: "emergencyResponse" as const, label: "Emergency Response & Troubleshooting", color: "#dd6b20" },
   { key: "testingScaling" as const, label: "Testing & User Scaling", color: "#3182ce" },
   { key: "securityCompliance" as const, label: "Security & Compliance Patching", color: "#805ad5" },

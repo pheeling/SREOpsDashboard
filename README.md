@@ -28,8 +28,8 @@ or improve its systems.
   This is scoped per-service (not a single global cut) so that gaps in niche services don't
   disproportionately punish teams that are strong everywhere else.
 - **Capacity Budget** — available hours (`fteCount * weeklyHours`) are allocated across six buckets:
-  - **Maintenance & Eliminating Toil** — sum of all active services' Required Hours (linear in the
-    number of services).
+  - **Routine Operations & Maintenance Toil** — sum of all active services' Required Hours (linear in
+    the number of services).
   - **Emergency Response & Troubleshooting** — fixed `10%` of raw available hours, reserved for
     unplanned incidents.
   - **Testing & User Scaling** — fixed `5%` of raw available hours, reserved for growth/load prep.
@@ -37,9 +37,11 @@ or improve its systems.
     remediation, audits, and policy upkeep.
   - **On-Call & Monitoring** — fixed `7%` of raw available hours, reserved for alert triage, dashboards,
     and SLO tracking.
-  - **New Features / Innovation** — whatever effective capacity remains after the five buckets above
-    (never negative).
-- **Red Zone** — when `Maintenance + Emergency Response + Testing/Scaling + Security/Compliance +
+  - **New Features / Innovation & Toil Reduction** — engineering capacity for feature work, automation,
+    CI/CD improvements, and self-healing tooling; whatever effective capacity remains after the five
+    operational buckets above (never negative). Time invested in this engineering work is not operational
+    overhead.
+- **Red Zone** — when `Routine Operations + Emergency Response + Testing/Scaling + Security/Compliance +
   On-Call/Monitoring` exceeds **50%** of effective available capacity, the Load Gauge enters the
   Red Zone: the SRE-mandated ceiling on operational work, below which meaningful innovation can still
   happen. Crossing it signals an "Operational Death Spiral" — the team is losing control of the estate.
@@ -61,4 +63,3 @@ npm run build    # type-check and build for production
 npm test         # run the Vitest suite
 npm run lint     # run oxlint
 ```
-

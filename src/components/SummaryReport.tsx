@@ -24,6 +24,10 @@ export function SummaryReport() {
         Industry research shows 40–90% of a system&apos;s total cost is incurred after initial release. The table
         below quantifies the annualized dollar impact of automating each remaining manual service.
       </p>
+      <p>
+        Engineering time spent building automation, improving CI/CD, and creating self-healing tooling belongs
+        in New Features / Innovation &amp; Toil Reduction—not operational overhead or the Red Zone.
+      </p>
       <table>
         <thead>
           <tr>

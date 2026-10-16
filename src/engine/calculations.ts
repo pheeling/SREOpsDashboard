@@ -115,11 +115,11 @@ export function getServiceBreakdown(service: Service): ServiceBreakdown {
 }
 
 /**
- * Allocates capacity across the six Capacity Budget buckets. Maintenance &
- * Eliminating Toil is derived directly from active services; Emergency
- * Response, Testing & Scaling, Security & Compliance Patching, and On-Call &
- * Monitoring use fixed shares of raw capacity; Innovation absorbs whatever
- * effective capacity remains (never negative).
+ * Allocates capacity across the six Capacity Budget buckets. Routine
+ * Operations & Maintenance Toil is derived directly from active services;
+ * Emergency Response, Testing & Scaling, Security & Compliance Patching, and
+ * On-Call & Monitoring use fixed shares of raw capacity; Innovation & Toil
+ * Reduction absorbs whatever effective capacity remains (never negative).
  */
 export function getCapacityBuckets(state: DashboardState): CapacityBuckets {
   const totalAvailableHours = getTotalAvailableHours(state.globalConfig);
@@ -178,6 +178,8 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
   const effectiveAvailableHours = getEffectiveAvailableHours(state);
   const totalRequiredHours = getTotalRequiredHours(services);
   const buckets = getCapacityBuckets(state);
+  // Operational load is routine toil plus reactive/admin reserves only;
+  // engineering capacity for automation and toil reduction stays in innovation.
   const operationalLoadHours =
     buckets.maintenance +
     buckets.emergencyResponse +
