@@ -103,11 +103,11 @@ export function getServiceBreakdown(service: Service): ServiceBreakdown {
 }
 
 /**
- * Allocates capacity across the six Capacity Budget buckets. Maintenance &
- * Eliminating Toil is derived directly from active services; Emergency
- * Response, Testing & Scaling, Security & Compliance Patching, and On-Call &
- * Monitoring use fixed shares of raw capacity; Innovation absorbs whatever
- * capacity remains (never negative).
+ * Allocates capacity across the six Capacity Budget buckets. Routine
+ * Operations & Maintenance Toil is derived directly from active services;
+ * Emergency Response, Testing & Scaling, Security & Compliance Patching, and
+ * On-Call & Monitoring use fixed shares of raw capacity; Innovation & Toil
+ * Reduction absorbs whatever effective capacity remains (never negative).
  */
 export function getCapacityBuckets(state: DashboardState): CapacityBuckets {
   const totalAvailableHours = getTotalAvailableHours(state.globalConfig);
@@ -127,22 +127,22 @@ export function getCapacityBuckets(state: DashboardState): CapacityBuckets {
 
 /**
  * Financial Widget: "External Hiring Costs".
- * ((Required_Hours - Available_Hours) / Total_Available_Weekly_Hours) * Annual_Salary_Baseline
+ * Each hire contributes 50% of weekly hours to operational work, restoring the
+ * team to the 50% operational limit:
+ * max(0, Operational_Hours - 0.5 * Available_Hours) / (0.5 * weeklyHours) * Annual_Salary
  */
 export function getHiringCost(
-  totalRequiredHours: number,
+  operationalHours: number,
   effectiveAvailableHours: number,
   globalConfig: GlobalConfig,
 ): number {
-  totalRequiredHours = finiteNumber(totalRequiredHours);
+  operationalHours = finiteNumber(operationalHours);
   effectiveAvailableHours = finiteNumber(effectiveAvailableHours);
   const weeklyHours = finiteNumber(globalConfig.weeklyHours);
   const annualSalary = finiteNumber(globalConfig.annualSalary);
-  if (totalRequiredHours <= effectiveAvailableHours) {
-    return 0;
-  }
-  const deficitHours = totalRequiredHours - effectiveAvailableHours;
-  return weeklyHours > 0 ? (deficitHours / weeklyHours) * annualSalary : 0;
+  const toilDeficit = Math.max(0, operationalHours - RED_ZONE_THRESHOLD * effectiveAvailableHours);
+  if (toilDeficit <= 0 || weeklyHours <= 0) return 0;
+  return (toilDeficit / (RED_ZONE_THRESHOLD * weeklyHours)) * annualSalary;
 }
 
 /**
@@ -166,6 +166,8 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
   const effectiveAvailableHours = getEffectiveAvailableHours(state);
   const totalRequiredHours = getTotalRequiredHours(services);
   const buckets = getCapacityBuckets(state);
+  // Operational load is routine toil plus reactive/admin reserves only;
+  // engineering capacity for automation and toil reduction stays in innovation.
   const operationalLoadHours =
     buckets.maintenance +
     buckets.emergencyResponse +
@@ -183,7 +185,7 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
     operationalLoadHours,
     operationalLoadRatio,
     isRedZone: operationalLoadRatio > RED_ZONE_THRESHOLD,
-    hiringCost: getHiringCost(totalRequiredHours, effectiveAvailableHours, globalConfig),
+    hiringCost: getHiringCost(operationalLoadHours, effectiveAvailableHours, globalConfig),
   };
 }
 
