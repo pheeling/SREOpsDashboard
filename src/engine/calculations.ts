@@ -38,6 +38,9 @@ export const DEFAULT_SERVICE_WEIGHT = 1;
 /** SRE-mandated ceiling on manual operational work as a share of total capacity. */
 export const RED_ZONE_THRESHOLD = 0.5;
 
+/** Ratio used when operational work remains but no effective capacity is available. */
+const SATURATED_OPERATIONAL_LOAD_RATIO = 1;
+
 /** Fixed baseline used for financial modeling, per the design plan. */
 export const DEFAULT_ANNUAL_SALARY = 150_000;
 
@@ -154,6 +157,16 @@ export function getHiringCost(
 }
 
 /**
+ * Measures operational load against effective capacity. No operational work
+ * yields zero; nonzero work with no effective capacity is treated as saturated.
+ */
+function getOperationalLoadRatio(operationalLoadHours: number, effectiveAvailableHours: number): number {
+  if (operationalLoadHours <= 0) return 0;
+  if (effectiveAvailableHours <= 0) return SATURATED_OPERATIONAL_LOAD_RATIO;
+  return operationalLoadHours / effectiveAvailableHours;
+}
+
+/**
  * Runs the full engine over the current dashboard state, producing every
  * derived number the UI needs (buckets, red-zone status, hiring cost, etc).
  */
@@ -170,13 +183,7 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
     buckets.testingScaling +
     buckets.securityCompliance +
     buckets.onCallMonitoring;
-  let operationalLoadRatio = 0;
-  if (totalAvailableHours > 0) {
-    // A fully exhausted effective capacity with raw capacity available is still a red-zone state.
-    operationalLoadRatio = effectiveAvailableHours > 0 ? operationalLoadHours / effectiveAvailableHours : 1;
-  } else if (operationalLoadHours > 0) {
-    operationalLoadRatio = 1;
-  }
+  const operationalLoadRatio = getOperationalLoadRatio(operationalLoadHours, effectiveAvailableHours);
 
   return {
     services: services.map(getServiceBreakdown),

@@ -29,6 +29,12 @@
   }
 }
 
+@media (min-width: 1024px) {
+  .dashboard__grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  }
+}
+
 .dashboard-card {
   min-width: 0;
   padding: clamp(0.875rem, 2vw, 1.25rem);
@@ -68,12 +74,6 @@
 .global-config-panel input {
   width: 100%;
   min-width: 0;
-}
-
-@media (min-width: 1024px) {
-  .dashboard__grid {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-  }
 }
 
 /* --- Warning Banner --- */
@@ -237,6 +237,10 @@
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
   gap: 0.9rem;
   margin-top: 1rem;
+}
+
+.service-matrix {
+  grid-column: 1 / -1;
 }
 
 /* --- Service Card: Active vs Inactive --- */
