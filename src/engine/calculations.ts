@@ -23,16 +23,16 @@ export const EXPERTISE_AVAILABILITY_PENALTY = 0.2;
 /** Default share of contracted hours available for technical work after overhead. */
 export const DEFAULT_CAPACITY_EFFICIENCY_FACTOR = 0.8;
 
-/** Fixed share of raw capacity reserved for unexpected incidents/outages. */
+/** Fixed share of effective capacity reserved for unexpected incidents/outages. */
 export const EMERGENCY_RESPONSE_SHARE = 0.1;
 
-/** Fixed share of raw capacity reserved for user-growth prep/testing. */
+/** Fixed share of effective capacity reserved for user-growth prep/testing. */
 export const TESTING_SCALING_SHARE = 0.05;
 
-/** Fixed share of raw capacity reserved for security/compliance patching (CVE remediation, audits). */
+/** Fixed share of effective capacity reserved for security/compliance patching (CVE remediation, audits). */
 export const SECURITY_COMPLIANCE_SHARE = 0.08;
 
-/** Fixed share of raw capacity reserved for on-call rotations, alert triage and SLO/monitoring upkeep. */
+/** Fixed share of effective capacity reserved for on-call rotations, alert triage and SLO/monitoring upkeep. */
 export const ON_CALL_MONITORING_SHARE = 0.07;
 
 /** Default criticality/"blast-radius" weight applied to a service when none is specified. */
@@ -81,7 +81,7 @@ export function getRequiredHours(service: Service): number {
 /**
  * The availability penalty (in hours) incurred because the team lacks
  * technical expertise for this service: 20% of the service's own required
- * hours, subtracted from overall FTE availability. Only applies to active
+ * hours, subtracted from effective capacity. Only applies to active
  * services.
  */
 export function getExpertisePenaltyHours(service: Service): number {

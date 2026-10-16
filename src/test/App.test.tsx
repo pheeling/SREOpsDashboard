@@ -14,6 +14,25 @@ describe("App", () => {
     expect(screen.getByTestId("load-gauge")).toBeInTheDocument();
     expect(screen.getByTestId("hiring-cost-widget")).toBeInTheDocument();
     expect(screen.getByText(/Services \(19\/19 active\)/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Effective Capacity (%)")).toHaveValue(80);
+    expect(screen.queryByTestId("staffing-warning")).not.toBeInTheDocument();
+  });
+
+  it("warns when the configured team has fewer than four engineers", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const fteInput = screen.getByLabelText("FTE Count");
+    await user.clear(fteInput);
+    await user.type(fteInput, "3");
+
+    expect(screen.getByTestId("staffing-warning")).toHaveTextContent(
+      "Warning: An SRE team with fewer than 4 engineers cannot sustain a healthy 24/7 on-call rotation without severe burnout, regardless of service volume.",
+    );
+
+    await user.clear(fteInput);
+    await user.type(fteInput, "4");
+    expect(screen.queryByTestId("staffing-warning")).not.toBeInTheDocument();
   });
 
   it("toggling automation for a service reduces its required hours", async () => {

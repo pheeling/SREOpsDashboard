@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DashboardState, Service } from "./types";
 import {
   AUTOMATION_REDUCTION_FACTOR,
+  DEFAULT_CAPACITY_EFFICIENCY_FACTOR,
   DEFAULT_SERVICE_WEIGHT,
   EXPERTISE_AVAILABILITY_PENALTY,
   ON_CALL_MONITORING_SHARE,
@@ -11,6 +12,7 @@ import {
   getBaseHours,
   getCapacityBuckets,
   getEffectiveAvailableHours,
+  getEffectiveCapacityHours,
   getExpertisePenaltyHours,
   getHiringCost,
   getRequiredHours,
@@ -152,27 +154,71 @@ describe("getTotalAvailableHours / getTotalRequiredHours", () => {
   });
 });
 
+describe("effective capacity", () => {
+  it("defaults to 80% of contracted hours and honors a configured efficiency factor", () => {
+    expect(getEffectiveCapacityHours({ fteCount: 5, weeklyHours: 40, annualSalary: 150000 })).toBe(160);
+    expect(
+      getEffectiveCapacityHours({
+        fteCount: 5,
+        weeklyHours: 40,
+        capacityEfficiencyFactor: 0.5,
+        annualSalary: 150000,
+      }),
+    ).toBe(100);
+    expect(DEFAULT_CAPACITY_EFFICIENCY_FACTOR).toBe(0.8);
+  });
+
+  it("uses effective capacity for fixed bucket allocations and utilization", () => {
+    const report = computeCapacityReport({
+      globalConfig: { fteCount: 5, weeklyHours: 40, annualSalary: 150000 },
+      services: [],
+    });
+
+    expect(report.totalAvailableHours).toBe(200);
+    expect(report.effectiveAvailableHours).toBe(160);
+    expect(report.buckets.emergencyResponse).toBe(16);
+    expect(report.buckets.innovation).toBe(112);
+    expect(report.operationalLoadRatio).toBeCloseTo(0.3);
+  });
+
+  it("uses the configured factor for reserves and utilization", () => {
+    const report = computeCapacityReport({
+      globalConfig: {
+        fteCount: 5,
+        weeklyHours: 40,
+        capacityEfficiencyFactor: 0.5,
+        annualSalary: 150000,
+      },
+      services: [],
+    });
+
+    expect(report.effectiveAvailableHours).toBe(100);
+    expect(report.buckets.emergencyResponse).toBe(10);
+    expect(report.operationalLoadRatio).toBeCloseTo(0.3);
+  });
+});
+
 describe("getEffectiveAvailableHours", () => {
-  it("subtracts the expertise penalty from raw available hours", () => {
+  it("subtracts the expertise penalty from discounted capacity hours", () => {
     const state: DashboardState = {
       globalConfig: { fteCount: 5, weeklyHours: 40, annualSalary: 150000 },
       services: [makeService({ deployHours: 10, maintenanceHours: 0, hasExpertise: false })],
     };
-    // raw = 200, penalty = 10 * 0.2 = 2
-    expect(getEffectiveAvailableHours(state)).toBeCloseTo(198);
+    // effective capacity = 200 * 0.8 = 160, penalty = 10 * 0.2 = 2
+    expect(getEffectiveAvailableHours(state)).toBeCloseTo(158);
   });
 });
 
 describe("getCapacityBuckets", () => {
-  it("reserves the Security/Compliance and On-Call/Monitoring shares from raw available hours", () => {
+  it("reserves the Security/Compliance and On-Call/Monitoring shares from effective capacity", () => {
     const state: DashboardState = {
       globalConfig: { fteCount: 10, weeklyHours: 40, annualSalary: 150000 },
       services: [],
     };
     const buckets = getCapacityBuckets(state);
-    const totalAvailableHours = getTotalAvailableHours(state.globalConfig);
-    expect(buckets.securityCompliance).toBeCloseTo(totalAvailableHours * SECURITY_COMPLIANCE_SHARE);
-    expect(buckets.onCallMonitoring).toBeCloseTo(totalAvailableHours * ON_CALL_MONITORING_SHARE);
+    const effectiveCapacityHours = getTotalAvailableHours(state.globalConfig) * DEFAULT_CAPACITY_EFFICIENCY_FACTOR;
+    expect(buckets.securityCompliance).toBeCloseTo(effectiveCapacityHours * SECURITY_COMPLIANCE_SHARE);
+    expect(buckets.onCallMonitoring).toBeCloseTo(effectiveCapacityHours * ON_CALL_MONITORING_SHARE);
   });
 });
 
@@ -284,11 +330,10 @@ describe("computeCapacityReport - SRE scenario validation", () => {
       hasExpertise: true,
       isAutomated: true,
     }));
-    // With Security/Compliance and On-Call/Monitoring buckets now reserving a
-    // combined 15% of raw capacity (on top of Emergency Response + Testing),
+    // With the default capacity discount and fixed operational reserves,
     // a larger automated team is needed to stay under the 50% Red Zone line.
     const state: DashboardState = {
-      globalConfig: { fteCount: 50, weeklyHours: 40, annualSalary: 150000 },
+      globalConfig: { fteCount: 100, weeklyHours: 40, annualSalary: 150000 },
       services,
     };
 

@@ -23,11 +23,14 @@ or improve its systems.
     in the Service Matrix (`Criticality Weight` field).
   - Inactive services contribute `0` hours.
 - **Technical Expertise penalty** — if a team lacks in-house expertise (`hasExpertise = false`) for an
-  active service, `20%` (1/5) of *that service's own* required hours is subtracted from total FTE
-  availability, modeling the "learning curve" cost of operating something the team doesn't understand yet.
+  active service, `20%` (1/5) of *that service's own* required hours is subtracted from effective capacity,
+  modeling the "learning curve" cost of operating something the team doesn't understand yet.
   This is scoped per-service (not a single global cut) so that gaps in niche services don't
   disproportionately punish teams that are strong everywhere else.
-- **Capacity Budget** — effective capacity hours (`fteCount * weeklyHours * capacityEfficiencyFactor`, default `0.8`) account for non-project overhead before allocations; the expertise penalty is then subtracted from availability. Effective capacity is allocated across six buckets:
+- **Capacity Budget** — effective capacity hours
+  (`fteCount * weeklyHours * capacityEfficiencyFactor`, default `0.8`) account for non-project overhead
+  before allocations; the expertise penalty is then subtracted from availability. Effective capacity is
+  allocated across six buckets:
   - **Maintenance & Eliminating Toil** — sum of all active services' Required Hours (linear in the
     number of services).
   - **Emergency Response & Troubleshooting** — fixed `10%` of effective capacity hours, reserved for
