@@ -18,7 +18,7 @@ export function SummaryReport() {
   );
 
   return (
-    <section className="summary-report" aria-label="Automation ROI Summary Report" data-testid="summary-report">
+    <section className="dashboard-card summary-report" aria-label="Automation ROI Summary Report" data-testid="summary-report">
       <h2>Automation ROI Summary Report</h2>
       <p>
         Industry research shows 40–90% of a system&apos;s total cost is incurred after initial release. The table

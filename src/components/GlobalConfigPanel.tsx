@@ -5,7 +5,7 @@ export function GlobalConfigPanel() {
   const { globalConfig } = state;
 
   return (
-    <section className="global-config-panel" aria-label="Global Configuration">
+    <section className="dashboard-card global-config-panel" aria-label="Global Configuration">
       <h2>Team Configuration</h2>
       <label>
         FTE Count

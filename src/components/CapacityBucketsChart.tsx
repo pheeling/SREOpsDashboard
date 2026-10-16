@@ -14,40 +14,47 @@ export function CapacityBucketsChart() {
   const { state } = useDashboard();
   const report = computeCapacityReport(state);
   const { buckets } = report;
-  const total = Object.values(buckets).reduce((sum, v) => sum + v, 0) || 1;
+  const total = Object.values(buckets).reduce((sum, value) => sum + value, 0);
+  const capacity = report.totalAvailableHours;
+  const bucketMetrics = BUCKET_META.map((bucket) => {
+    const value = buckets[bucket.key];
+    return {
+      ...bucket,
+      value,
+      capacityPercent: capacity > 0 ? (value / capacity) * 100 : 0,
+      bucketShare: total > 0 ? (value / total) * 100 : 0,
+    };
+  });
 
   return (
-    <section className="capacity-chart" aria-label="Error Budget Buckets" data-testid="capacity-chart">
+    <section className="dashboard-card capacity-chart" aria-label="Error Budget Buckets" data-testid="capacity-chart">
       <h2>Error Budget Buckets</h2>
-      <div className="capacity-chart__bar" role="img" aria-label="Stacked bar chart of capacity buckets">
-        {BUCKET_META.map(({ key, label, color }) => {
-          const value = buckets[key];
-          const percent = (value / total) * 100;
-          return (
-            <div
-              key={key}
-              className="capacity-chart__segment"
-              style={{ width: `${percent}%`, backgroundColor: color }}
-              title={`${label}: ${value.toFixed(1)} hrs (${percent.toFixed(1)}%)`}
-              data-testid={`capacity-segment-${key}`}
-            />
-          );
-        })}
+      <div
+        className="capacity-chart__bar"
+        role="img"
+        aria-label="Stacked bar showing each bucket's share of the total bucket hours"
+      >
+        {bucketMetrics.map(({ key, label, color, value, capacityPercent, bucketShare }) => (
+          <div
+            key={key}
+            className="capacity-chart__segment"
+            style={{ width: `${bucketShare}%`, backgroundColor: color }}
+            title={`${label}: ${value.toFixed(1)} hrs (${bucketShare.toFixed(1)}% of bucket hours; ${capacityPercent.toFixed(1)}% of FTE capacity)`}
+            data-testid={`capacity-segment-${key}`}
+          />
+        ))}
       </div>
       <ul className="capacity-chart__legend">
-        {BUCKET_META.map(({ key, label, color }) => {
-          const value = buckets[key];
-          const percent = (value / total) * 100;
-          return (
-            <li key={key} className="capacity-chart__legend-item">
-              <span className="capacity-chart__swatch" style={{ backgroundColor: color }} />
-              <span className="capacity-chart__legend-label">{label}</span>
-              <span className="capacity-chart__legend-value">
-                {value.toFixed(1)} hrs ({percent.toFixed(1)}%)
-              </span>
-            </li>
-          );
-        })}
+        {bucketMetrics.map(({ key, label, color, value, bucketShare, capacityPercent }) => (
+          <li key={key} className="capacity-chart__legend-item">
+            <span className="capacity-chart__swatch" style={{ backgroundColor: color }} />
+            <span className="capacity-chart__legend-label">{label}</span>
+            <span className="capacity-chart__legend-value">
+              {value.toFixed(1)} hrs ({bucketShare.toFixed(1)}% of bucket hours;{" "}
+              {capacityPercent.toFixed(1)}% of FTE capacity)
+            </span>
+          </li>
+        ))}
       </ul>
     </section>
   );

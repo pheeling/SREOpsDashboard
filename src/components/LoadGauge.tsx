@@ -28,7 +28,7 @@ export function LoadGauge() {
 
   return (
     <section
-      className={`load-gauge ${report.isRedZone ? "load-gauge--red-zone" : ""}`}
+      className={`dashboard-card load-gauge ${report.isRedZone ? "load-gauge--red-zone" : ""}`}
       aria-label="Operational Load vs Innovation Capacity Gauge"
       data-testid="load-gauge"
     >

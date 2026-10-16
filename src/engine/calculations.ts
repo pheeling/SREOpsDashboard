@@ -38,8 +38,16 @@ export const DEFAULT_SERVICE_WEIGHT = 1;
 /** SRE-mandated ceiling on manual operational work as a share of total capacity. */
 export const RED_ZONE_THRESHOLD = 0.5;
 
+/** Ratio used when operational work remains but no effective capacity is available. */
+const SATURATED_OPERATIONAL_LOAD_RATIO = 1;
+
 /** Fixed baseline used for financial modeling, per the design plan. */
 export const DEFAULT_ANNUAL_SALARY = 150_000;
+
+function finiteNumber(value: unknown, fallback = 0): number {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
 
 export function getAutomationDivisor(service: Pick<Service, "isAutomated">): number {
   return service.isAutomated ? AUTOMATION_REDUCTION_FACTOR : 1;
@@ -47,12 +55,14 @@ export function getAutomationDivisor(service: Pick<Service, "isAutomated">): num
 
 /** Criticality/"blast-radius" multiplier for a service; defaults to 1 when unset. */
 export function getServiceWeight(service: Pick<Service, "weight">): number {
-  return service.weight ?? DEFAULT_SERVICE_WEIGHT;
+  if (service.weight == null) return DEFAULT_SERVICE_WEIGHT;
+  const weight = finiteNumber(service.weight, DEFAULT_SERVICE_WEIGHT);
+  return weight >= 0 ? weight : DEFAULT_SERVICE_WEIGHT;
 }
 
 /** Base Hours = Deploying Hours + Maintenance Hours (before automation is applied). */
 export function getBaseHours(service: Pick<Service, "deployHours" | "maintenanceHours">): number {
-  return service.deployHours + service.maintenanceHours;
+  return finiteNumber(service.deployHours) + finiteNumber(service.maintenanceHours);
 }
 
 /**
@@ -81,7 +91,7 @@ export function getTotalRequiredHours(services: Service[]): number {
 }
 
 export function getTotalAvailableHours(globalConfig: GlobalConfig): number {
-  return globalConfig.fteCount * globalConfig.weeklyHours;
+  return finiteNumber(globalConfig.fteCount) * finiteNumber(globalConfig.weeklyHours);
 }
 
 export function getEffectiveAvailableHours(state: DashboardState): number {
@@ -136,11 +146,25 @@ export function getHiringCost(
   effectiveAvailableHours: number,
   globalConfig: GlobalConfig,
 ): number {
+  totalRequiredHours = finiteNumber(totalRequiredHours);
+  effectiveAvailableHours = finiteNumber(effectiveAvailableHours);
+  const weeklyHours = finiteNumber(globalConfig.weeklyHours);
+  const annualSalary = finiteNumber(globalConfig.annualSalary);
   if (totalRequiredHours <= effectiveAvailableHours) {
     return 0;
   }
   const deficitHours = totalRequiredHours - effectiveAvailableHours;
-  return (deficitHours / globalConfig.weeklyHours) * globalConfig.annualSalary;
+  return weeklyHours > 0 ? (deficitHours / weeklyHours) * annualSalary : 0;
+}
+
+/**
+ * Measures operational load against effective capacity. No operational work
+ * yields zero; nonzero work with no effective capacity is treated as saturated.
+ */
+function getOperationalLoadRatio(operationalLoadHours: number, effectiveAvailableHours: number): number {
+  if (operationalLoadHours <= 0) return 0;
+  if (effectiveAvailableHours <= 0) return SATURATED_OPERATIONAL_LOAD_RATIO;
+  return operationalLoadHours / effectiveAvailableHours;
 }
 
 /**
@@ -160,7 +184,7 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
     buckets.testingScaling +
     buckets.securityCompliance +
     buckets.onCallMonitoring;
-  const operationalLoadRatio = effectiveAvailableHours > 0 ? operationalLoadHours / effectiveAvailableHours : 1;
+  const operationalLoadRatio = getOperationalLoadRatio(operationalLoadHours, effectiveAvailableHours);
 
   return {
     services: services.map(getServiceBreakdown),
@@ -188,5 +212,6 @@ export function getAutomationRoiHours(service: Service): number {
 
 export function getAutomationRoiDollars(service: Service, globalConfig: GlobalConfig): number {
   const hoursSavedPerWeek = getAutomationRoiHours(service);
-  return (hoursSavedPerWeek / globalConfig.weeklyHours) * globalConfig.annualSalary;
+  const weeklyHours = finiteNumber(globalConfig.weeklyHours);
+  return weeklyHours > 0 ? (hoursSavedPerWeek / weeklyHours) * finiteNumber(globalConfig.annualSalary) : 0;
 }
