@@ -22,11 +22,10 @@ or improve its systems.
     database costs the operations team more effort than a misconfigured printer. Adjustable per service
     in the Service Matrix (`Criticality Weight` field).
   - Inactive services contribute `0` hours.
-- **Technical Expertise penalty** — if a team lacks in-house expertise (`hasExpertise = false`) for an
-  active service, `20%` (1/5) of *that service's own* required hours is subtracted from total FTE
-  availability, modeling the "learning curve" cost of operating something the team doesn't understand yet.
-  This is scoped per-service (not a single global cut) so that gaps in niche services don't
-  disproportionately punish teams that are strong everywhere else.
+- **Technical Expertise multiplier** — if a team lacks in-house expertise (`hasExpertise = false`) for an
+  active service, that service's required hours increase by `25%` to model the learning curve of operating
+  something the team doesn't understand yet. This increases workload without reducing contracted FTE
+  availability.
 - **Capacity Budget** — available hours (`fteCount * weeklyHours`) are allocated across six buckets:
   - **Maintenance & Eliminating Toil** — sum of all active services' Required Hours (linear in the
     number of services).
@@ -37,7 +36,7 @@ or improve its systems.
     remediation, audits, and policy upkeep.
   - **On-Call & Monitoring** — fixed `7%` of raw available hours, reserved for alert triage, dashboards,
     and SLO tracking.
-  - **New Features / Innovation** — whatever effective capacity remains after the five buckets above
+  - **New Features / Innovation** — whatever capacity remains after the five buckets above
     (never negative).
 - **Red Zone** — when `Maintenance + Emergency Response + Testing/Scaling + Security/Compliance +
   On-Call/Monitoring` exceeds **50%** of effective available capacity, the Load Gauge enters the
@@ -61,4 +60,3 @@ npm run build    # type-check and build for production
 npm test         # run the Vitest suite
 npm run lint     # run oxlint
 ```
-
