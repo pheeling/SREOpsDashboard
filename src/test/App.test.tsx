@@ -35,6 +35,18 @@ describe("App", () => {
     expect(screen.queryByTestId("staffing-warning")).not.toBeInTheDocument();
   });
 
+  it("allows the team to adjust its effective capacity factor", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const capacityInput = screen.getByLabelText("Effective Capacity (%)");
+    await user.clear(capacityInput);
+    await user.type(capacityInput, "50");
+
+    expect(capacityInput).toHaveValue(50);
+    expect(screen.getByTestId("capacity-segment-emergencyResponse").getAttribute("title")).toContain("10.0 hrs");
+  });
+
   it("toggling automation for a service reduces its required hours", async () => {
     const user = userEvent.setup();
     render(<App />);
