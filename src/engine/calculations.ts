@@ -55,8 +55,9 @@ export function getAutomationDivisor(service: Pick<Service, "isAutomated">): num
 
 /** Criticality/"blast-radius" multiplier for a service; defaults to 1 when unset. */
 export function getServiceWeight(service: Pick<Service, "weight">): number {
+  if (service.weight == null) return DEFAULT_SERVICE_WEIGHT;
   const weight = finiteNumber(service.weight, DEFAULT_SERVICE_WEIGHT);
-  return weight > 0 ? weight : DEFAULT_SERVICE_WEIGHT;
+  return weight >= 0 ? weight : DEFAULT_SERVICE_WEIGHT;
 }
 
 /** Base Hours = Deploying Hours + Maintenance Hours (before automation is applied). */

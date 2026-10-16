@@ -45,12 +45,13 @@ export function CapacityBucketsChart() {
         ))}
       </div>
       <ul className="capacity-chart__legend">
-        {bucketMetrics.map(({ key, label, color, value, capacityPercent }) => (
+        {bucketMetrics.map(({ key, label, color, value, bucketShare, capacityPercent }) => (
           <li key={key} className="capacity-chart__legend-item">
             <span className="capacity-chart__swatch" style={{ backgroundColor: color }} />
             <span className="capacity-chart__legend-label">{label}</span>
             <span className="capacity-chart__legend-value">
-              {value.toFixed(1)} hrs ({capacityPercent.toFixed(1)}% of FTE capacity)
+              {value.toFixed(1)} hrs ({bucketShare.toFixed(1)}% of bucket hours;{" "}
+              {capacityPercent.toFixed(1)}% of FTE capacity)
             </span>
           </li>
         ))}

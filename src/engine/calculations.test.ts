@@ -94,6 +94,10 @@ describe("getRequiredHours", () => {
     expect(getServiceWeight(service)).toBe(DEFAULT_SERVICE_WEIGHT);
   });
 
+  it("preserves an explicit zero criticality weight", () => {
+    expect(getServiceWeight(makeService({ weight: 0 }))).toBe(0);
+  });
+
   it("multiplies required hours by the service's criticality weight", () => {
     const service = makeService({ deployHours: 5, maintenanceHours: 3, weight: 2 });
     expect(getRequiredHours(service)).toBe(16);
