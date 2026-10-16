@@ -43,9 +43,10 @@ or improve its systems.
   On-Call/Monitoring` exceeds **50%** of effective available capacity, the Load Gauge enters the
   Red Zone: the SRE-mandated ceiling on operational work, below which meaningful innovation can still
   happen. Crossing it signals an "Operational Death Spiral" — the team is losing control of the estate.
-- **Hiring Cost Estimator** — `((Required_Hours - Available_Hours) / weeklyHours) * annualSalary`. The
-  tool assumes a company prefers to grow its own staff; whenever required hours exceed effective
-  availability, the shortfall is expressed as an annualized *external hiring cost* instead.
+- **Hiring Cost Estimator** — `max(0, Operational_Hours - 0.5 * Available_Hours) / (0.5 * weeklyHours) * annualSalary`.
+  Hiring is triggered as soon as operational load crosses the 50% Red Zone; each new SRE is assumed to
+  put 50% of their hours toward toil (the other 50% stays for engineering), restoring a sustainable
+  50% operational balance. At or below 50% load the cost is `$0`.
 - **Automation ROI Summary Report** — a printable view showing the annualized dollar savings of
   automating each remaining manual service.
 
