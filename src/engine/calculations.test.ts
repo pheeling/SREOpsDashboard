@@ -187,6 +187,11 @@ describe("getHiringCost", () => {
     // deficit of 20 hours / 40 = 0.5 FTE => half annual salary
     expect(getHiringCost(220, 200, globalConfig)).toBeCloseTo(75000);
   });
+
+  it("returns a finite value when weekly hours are zero or invalid", () => {
+    expect(getHiringCost(240, 200, { ...globalConfig, weeklyHours: 0 })).toBe(0);
+    expect(getHiringCost(Number.NaN, Number.NaN, { ...globalConfig, weeklyHours: Number.NaN })).toBe(0);
+  });
 });
 
 describe("getAutomationRoiHours", () => {

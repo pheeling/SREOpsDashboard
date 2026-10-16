@@ -142,11 +142,15 @@ export function getHiringCost(
   effectiveAvailableHours: number,
   globalConfig: GlobalConfig,
 ): number {
+  totalRequiredHours = finiteNumber(totalRequiredHours);
+  effectiveAvailableHours = finiteNumber(effectiveAvailableHours);
+  const weeklyHours = finiteNumber(globalConfig.weeklyHours);
+  const annualSalary = finiteNumber(globalConfig.annualSalary);
   if (totalRequiredHours <= effectiveAvailableHours) {
     return 0;
   }
   const deficitHours = totalRequiredHours - effectiveAvailableHours;
-  return (deficitHours / globalConfig.weeklyHours) * globalConfig.annualSalary;
+  return weeklyHours > 0 ? (deficitHours / weeklyHours) * annualSalary : 0;
 }
 
 /**
@@ -166,7 +170,8 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
     buckets.testingScaling +
     buckets.securityCompliance +
     buckets.onCallMonitoring;
-  const operationalLoadRatio = effectiveAvailableHours > 0 ? operationalLoadHours / effectiveAvailableHours : 0;
+  const operationalLoadRatio =
+    totalAvailableHours <= 0 ? 0 : effectiveAvailableHours > 0 ? operationalLoadHours / effectiveAvailableHours : 1;
 
   return {
     services: services.map(getServiceBreakdown),
@@ -194,5 +199,6 @@ export function getAutomationRoiHours(service: Service): number {
 
 export function getAutomationRoiDollars(service: Service, globalConfig: GlobalConfig): number {
   const hoursSavedPerWeek = getAutomationRoiHours(service);
-  return (hoursSavedPerWeek / globalConfig.weeklyHours) * globalConfig.annualSalary;
+  const weeklyHours = finiteNumber(globalConfig.weeklyHours);
+  return weeklyHours > 0 ? (hoursSavedPerWeek / weeklyHours) * finiteNumber(globalConfig.annualSalary) : 0;
 }
