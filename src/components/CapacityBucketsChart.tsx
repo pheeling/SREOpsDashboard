@@ -15,6 +15,7 @@ export function CapacityBucketsChart() {
   const report = computeCapacityReport(state);
   const { buckets } = report;
   const total = Object.values(buckets).reduce((sum, value) => sum + value, 0);
+  const capacity = report.totalAvailableHours;
 
   return (
     <section className="dashboard-card capacity-chart" aria-label="Error Budget Buckets" data-testid="capacity-chart">
@@ -22,12 +23,13 @@ export function CapacityBucketsChart() {
       <div className="capacity-chart__bar" role="img" aria-label="Stacked bar chart of capacity buckets">
         {BUCKET_META.map(({ key, label, color }) => {
           const value = buckets[key];
-          const percent = total > 0 ? (value / total) * 100 : 0;
+          const percent = capacity > 0 ? (value / capacity) * 100 : 0;
+          const bucketShare = total > 0 ? (value / total) * 100 : 0;
           return (
             <div
               key={key}
               className="capacity-chart__segment"
-              style={{ width: `${percent}%`, backgroundColor: color }}
+              style={{ width: `${bucketShare}%`, backgroundColor: color }}
               title={`${label}: ${value.toFixed(1)} hrs (${percent.toFixed(1)}%)`}
               data-testid={`capacity-segment-${key}`}
             />
@@ -37,7 +39,7 @@ export function CapacityBucketsChart() {
       <ul className="capacity-chart__legend">
         {BUCKET_META.map(({ key, label, color }) => {
           const value = buckets[key];
-          const percent = total > 0 ? (value / total) * 100 : 0;
+          const percent = capacity > 0 ? (value / capacity) * 100 : 0;
           return (
             <li key={key} className="capacity-chart__legend-item">
               <span className="capacity-chart__swatch" style={{ backgroundColor: color }} />
