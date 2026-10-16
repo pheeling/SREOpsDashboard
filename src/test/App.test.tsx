@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../App";
@@ -59,5 +59,22 @@ describe("App", () => {
     await user.click(screen.getByTestId("toggle-summary-report"));
 
     expect(screen.getByTestId("summary-report")).toBeInTheDocument();
+  });
+
+  it("deletes a single service, delete-all empties the catalog, and defaults can be restored", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<App />);
+
+    await user.click(screen.getByLabelText("Delete Printing"));
+    expect(screen.queryByTestId("service-card-printing")).not.toBeInTheDocument();
+    expect(screen.getByText(/Services \(18\/18 active\)/)).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("delete-all-services"));
+    expect(screen.getByTestId("services-empty-state")).toBeInTheDocument();
+    expect(screen.getByText("No active services in catalog.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Restore Default Services" }));
+    expect(screen.getByText(/Services \(19\/19 active\)/)).toBeInTheDocument();
   });
 });

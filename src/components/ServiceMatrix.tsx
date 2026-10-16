@@ -17,6 +17,14 @@ export function ServiceMatrix() {
   const handleChangeWeight = (serviceId: string, weight: number) =>
     dispatch({ type: "UPDATE_SERVICE_WEIGHT", serviceId, weight });
 
+  const handleDelete = (serviceId: string) => dispatch({ type: "DELETE_SERVICE", serviceId });
+  const handleDeleteAll = () => {
+    if (window.confirm("Delete all services from the catalog?")) {
+      dispatch({ type: "DELETE_ALL_SERVICES" });
+    }
+  };
+  const handleRestoreDefaults = () => dispatch({ type: "RESTORE_DEFAULT_SERVICES" });
+
   const activeCount = state.services.filter((s) => s.isActive).length;
   const totalRequiredHours = getTotalRequiredHours(state.services);
   const avgHoursPerService = activeCount > 0 ? totalRequiredHours / activeCount : 0;
@@ -56,6 +64,15 @@ export function ServiceMatrix() {
           data-testid="add-custom-service-toggle"
         >
           {showAddForm ? "Cancel" : "+ Add Custom Service"}
+        </button>
+        <button
+          type="button"
+          className="service-matrix__delete-all"
+          onClick={handleDeleteAll}
+          disabled={state.services.length === 0}
+          data-testid="delete-all-services"
+        >
+          Delete All
         </button>
       </div>
 
@@ -99,18 +116,33 @@ export function ServiceMatrix() {
         </form>
       )}
 
-      <div className="service-matrix__grid">
-        {state.services.map((service) => (
-          <ServiceCard
-            key={service.id}
-            service={service}
-            onToggleActive={handleToggleActive}
-            onToggleExpertise={handleToggleExpertise}
-            onToggleAutomation={handleToggleAutomation}
-            onChangeWeight={handleChangeWeight}
-          />
-        ))}
-      </div>
+      {state.services.length === 0 ? (
+        <div className="service-matrix__empty" data-testid="services-empty-state">
+          <p>No active services in catalog.</p>
+          <button
+            type="button"
+            className="service-matrix__restore"
+            onClick={handleRestoreDefaults}
+            data-testid="restore-default-services"
+          >
+            Restore Default Services
+          </button>
+        </div>
+      ) : (
+        <div className="service-matrix__grid">
+          {state.services.map((service) => (
+            <ServiceCard
+              key={service.id}
+              service={service}
+              onToggleActive={handleToggleActive}
+              onToggleExpertise={handleToggleExpertise}
+              onToggleAutomation={handleToggleAutomation}
+              onChangeWeight={handleChangeWeight}
+              onDelete={handleDelete}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

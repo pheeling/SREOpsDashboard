@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useReducer } from "react";
 import type { Dispatch, ReactNode } from "react";
 import type { DashboardState } from "../engine/types";
-import { DEFAULT_SERVICES } from "../engine/seedServices";
+import { cloneDefaultServices } from "../engine/seedServices";
 import { DEFAULT_ANNUAL_SALARY } from "../engine/calculations";
 import { dashboardReducer, type DashboardAction } from "./dashboardReducer";
 import { loadState, saveState } from "./localStorage";
@@ -12,7 +12,7 @@ export const INITIAL_STATE: DashboardState = {
     weeklyHours: 40,
     annualSalary: DEFAULT_ANNUAL_SALARY,
   },
-  services: DEFAULT_SERVICES,
+  services: cloneDefaultServices(),
 };
 
 interface DashboardContextValue {

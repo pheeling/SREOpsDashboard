@@ -7,7 +7,7 @@ import type { Service } from "./types";
  * Internal Networking, Firewall, EDR) are seeded with a criticality
  * `weight` above 1 (see `getServiceWeight`); all others default to 1.
  */
-export const DEFAULT_SERVICES: Service[] = [
+export const DEFAULT_SERVICES: readonly Readonly<Service>[] = Object.freeze([
   { id: "backup", name: "Backup", deployHours: 30, maintenanceHours: 15, isActive: true, hasExpertise: true, isAutomated: false },
   { id: "frontend_proxy", name: "Frontend Proxy", deployHours: 20, maintenanceHours: 8, isActive: true, hasExpertise: true, isAutomated: false },
   { id: "reverse_proxy", name: "Reverse Proxy", deployHours: 15, maintenanceHours: 6, isActive: true, hasExpertise: true, isAutomated: false },
@@ -27,4 +27,9 @@ export const DEFAULT_SERVICES: Service[] = [
   { id: "antivirus", name: "Antivirus", deployHours: 20, maintenanceHours: 8, isActive: true, hasExpertise: true, isAutomated: false },
   { id: "vulnerability_management", name: "Vulnerability Management", deployHours: 40, maintenanceHours: 25, isActive: true, hasExpertise: true, isAutomated: false },
   { id: "databases", name: "Databases", deployHours: 80, maintenanceHours: 40, isActive: true, hasExpertise: true, isAutomated: false, weight: 2 },
-];
+].map((service) => Object.freeze(service)));
+
+/** Returns fresh deep copies of the default services so callers can never mutate the baseline. */
+export function cloneDefaultServices(): Service[] {
+  return DEFAULT_SERVICES.map((service) => ({ ...service }));
+}

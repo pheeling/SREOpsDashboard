@@ -7,6 +7,7 @@ interface ServiceCardProps {
   onToggleExpertise: (id: string) => void;
   onToggleAutomation: (id: string) => void;
   onChangeWeight: (id: string, weight: number) => void;
+  onDelete: (id: string) => void;
 }
 
 export function ServiceCard({
@@ -15,6 +16,7 @@ export function ServiceCard({
   onToggleExpertise,
   onToggleAutomation,
   onChangeWeight,
+  onDelete,
 }: ServiceCardProps) {
   const requiredHours = getRequiredHours(service);
   const baseHours = getBaseHours(service);
@@ -25,6 +27,15 @@ export function ServiceCard({
       className={`service-card ${service.isActive ? "service-card--active" : "service-card--inactive"}`}
       data-testid={`service-card-${service.id}`}
     >
+      <button
+        type="button"
+        className="service-card__delete"
+        onClick={() => onDelete(service.id)}
+        aria-label={`Delete ${service.name}`}
+        title={`Delete ${service.name}`}
+      >
+        ×
+      </button>
       <div className="service-card__header">
         <label className="service-card__activate">
           <input
