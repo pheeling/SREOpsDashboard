@@ -17,6 +17,7 @@ import {
   getServiceWeight,
   getTotalAvailableHours,
   getTotalRequiredHours,
+  getAutomationRoiDollars,
 } from "./calculations";
 import { DEFAULT_SERVICES } from "./seedServices";
 
@@ -198,6 +199,14 @@ describe("getAutomationRoiHours", () => {
   it("reports the weekly hours saved by automating a service", () => {
     const service = makeService({ deployHours: 5, maintenanceHours: 4, hasExpertise: true, isAutomated: false });
     expect(getAutomationRoiHours(service)).toBeCloseTo(9 - 9 / 3);
+  });
+});
+
+describe("getAutomationRoiDollars", () => {
+  it("returns 0 when weekly hours are zero or invalid", () => {
+    const service = makeService();
+    expect(getAutomationRoiDollars(service, { fteCount: 5, weeklyHours: 0, annualSalary: 150000 })).toBe(0);
+    expect(getAutomationRoiDollars(service, { fteCount: 5, weeklyHours: Number.NaN, annualSalary: 150000 })).toBe(0);
   });
 });
 

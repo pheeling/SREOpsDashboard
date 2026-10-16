@@ -170,8 +170,11 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
     buckets.testingScaling +
     buckets.securityCompliance +
     buckets.onCallMonitoring;
-  const operationalLoadRatio =
-    totalAvailableHours <= 0 ? 0 : effectiveAvailableHours > 0 ? operationalLoadHours / effectiveAvailableHours : 1;
+  let operationalLoadRatio = 0;
+  if (totalAvailableHours > 0) {
+    // A fully exhausted effective capacity with raw capacity available is still a red-zone state.
+    operationalLoadRatio = effectiveAvailableHours > 0 ? operationalLoadHours / effectiveAvailableHours : 1;
+  }
 
   return {
     services: services.map(getServiceBreakdown),
