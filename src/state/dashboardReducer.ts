@@ -1,4 +1,5 @@
 import type { DashboardState, GlobalConfig, Service } from "../engine/types";
+import { cloneDefaultServices } from "../engine/seedServices";
 
 export interface NewCustomService {
   name: string;
@@ -12,6 +13,9 @@ export type DashboardAction =
   | { type: "TOGGLE_AUTOMATION"; serviceId: string }
   | { type: "UPDATE_SERVICE_WEIGHT"; serviceId: string; weight: number }
   | { type: "ADD_CUSTOM_SERVICE"; payload: NewCustomService }
+  | { type: "DELETE_SERVICE"; serviceId: string }
+  | { type: "DELETE_ALL_SERVICES" }
+  | { type: "RESTORE_DEFAULT_SERVICES" }
   | { type: "UPDATE_GLOBAL_CONFIG"; payload: Partial<GlobalConfig> }
   | { type: "RESET"; payload: DashboardState };
 
@@ -74,6 +78,12 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
       };
       return { ...state, services: [...state.services, newService] };
     }
+    case "DELETE_SERVICE":
+      return { ...state, services: state.services.filter((service) => service.id !== action.serviceId) };
+    case "DELETE_ALL_SERVICES":
+      return { ...state, services: [] };
+    case "RESTORE_DEFAULT_SERVICES":
+      return { ...state, services: cloneDefaultServices() };
     case "UPDATE_GLOBAL_CONFIG":
       return {
         ...state,
