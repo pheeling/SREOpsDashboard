@@ -12,6 +12,8 @@ export interface GlobalConfig {
   fteCount: number;
   /** Average weekly hours worked per FTE. */
   weeklyHours: number;
+  /** Share of contracted hours available for technical work (defaults to 0.8). */
+  capacityEfficiencyFactor?: number;
   /** Market rate baseline used for hiring-cost projections ($/year/FTE). */
   annualSalary: number;
 }

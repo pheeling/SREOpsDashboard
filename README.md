@@ -27,15 +27,15 @@ or improve its systems.
   availability, modeling the "learning curve" cost of operating something the team doesn't understand yet.
   This is scoped per-service (not a single global cut) so that gaps in niche services don't
   disproportionately punish teams that are strong everywhere else.
-- **Capacity Budget** — available hours (`fteCount * weeklyHours`) are allocated across six buckets:
+- **Capacity Budget** — effective capacity hours (`fteCount * weeklyHours * capacityEfficiencyFactor`, default `0.8`) account for non-project overhead before allocations; the expertise penalty is then subtracted from availability. Effective capacity is allocated across six buckets:
   - **Maintenance & Eliminating Toil** — sum of all active services' Required Hours (linear in the
     number of services).
-  - **Emergency Response & Troubleshooting** — fixed `10%` of raw available hours, reserved for
+  - **Emergency Response & Troubleshooting** — fixed `10%` of effective capacity hours, reserved for
     unplanned incidents.
-  - **Testing & User Scaling** — fixed `5%` of raw available hours, reserved for growth/load prep.
-  - **Security & Compliance Patching** — fixed `8%` of raw available hours, reserved for CVE
+  - **Testing & User Scaling** — fixed `5%` of effective capacity hours, reserved for growth/load prep.
+  - **Security & Compliance Patching** — fixed `8%` of effective capacity hours, reserved for CVE
     remediation, audits, and policy upkeep.
-  - **On-Call & Monitoring** — fixed `7%` of raw available hours, reserved for alert triage, dashboards,
+  - **On-Call & Monitoring** — fixed `7%` of effective capacity hours, reserved for alert triage, dashboards,
     and SLO tracking.
   - **New Features / Innovation** — whatever effective capacity remains after the five buckets above
     (never negative).
@@ -48,6 +48,8 @@ or improve its systems.
   availability, the shortfall is expressed as an annualized *external hiring cost* instead.
 - **Automation ROI Summary Report** — a printable view showing the annualized dollar savings of
   automating each remaining manual service.
+- **On-Call Staffing Guardrail** — warns when fewer than four engineers are configured, as a team of that size
+  cannot sustain a healthy 24/7 on-call rotation.
 
 State is normalized (`globalConfig` + `services[]`), persisted to `LocalStorage`, and driven by a
 reducer so UI changes cascade instantly through the capacity engine.
@@ -61,4 +63,3 @@ npm run build    # type-check and build for production
 npm test         # run the Vitest suite
 npm run lint     # run oxlint
 ```
-

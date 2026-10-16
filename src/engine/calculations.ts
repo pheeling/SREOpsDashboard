@@ -20,6 +20,9 @@ export const AUTOMATION_REDUCTION_FACTOR = 3;
 /** Fraction of a service's operational hours reduced from FTE availability when the team lacks expertise. */
 export const EXPERTISE_AVAILABILITY_PENALTY = 0.2;
 
+/** Default share of contracted hours available for technical work after overhead. */
+export const DEFAULT_CAPACITY_EFFICIENCY_FACTOR = 0.8;
+
 /** Fixed share of raw capacity reserved for unexpected incidents/outages. */
 export const EMERGENCY_RESPONSE_SHARE = 0.1;
 
@@ -94,10 +97,18 @@ export function getTotalAvailableHours(globalConfig: GlobalConfig): number {
   return finiteNumber(globalConfig.fteCount) * finiteNumber(globalConfig.weeklyHours);
 }
 
+export function getEffectiveCapacityHours(globalConfig: GlobalConfig): number {
+  const efficiencyFactor = Math.min(
+    1,
+    Math.max(0, finiteNumber(globalConfig.capacityEfficiencyFactor, DEFAULT_CAPACITY_EFFICIENCY_FACTOR)),
+  );
+  return getTotalAvailableHours(globalConfig) * efficiencyFactor;
+}
+
 export function getEffectiveAvailableHours(state: DashboardState): number {
-  const totalAvailableHours = getTotalAvailableHours(state.globalConfig);
+  const effectiveCapacityHours = getEffectiveCapacityHours(state.globalConfig);
   const penalty = state.services.reduce((sum, service) => sum + getExpertisePenaltyHours(service), 0);
-  return Math.max(0, totalAvailableHours - penalty);
+  return Math.max(0, effectiveCapacityHours - penalty);
 }
 
 export function getServiceBreakdown(service: Service): ServiceBreakdown {
@@ -118,18 +129,18 @@ export function getServiceBreakdown(service: Service): ServiceBreakdown {
  * Allocates capacity across the six Capacity Budget buckets. Maintenance &
  * Eliminating Toil is derived directly from active services; Emergency
  * Response, Testing & Scaling, Security & Compliance Patching, and On-Call &
- * Monitoring use fixed shares of raw capacity; Innovation absorbs whatever
+ * Monitoring use fixed shares of effective capacity; Innovation absorbs whatever
  * effective capacity remains (never negative).
  */
 export function getCapacityBuckets(state: DashboardState): CapacityBuckets {
-  const totalAvailableHours = getTotalAvailableHours(state.globalConfig);
+  const effectiveCapacityHours = getEffectiveCapacityHours(state.globalConfig);
   const effectiveAvailableHours = getEffectiveAvailableHours(state);
   const maintenance = getTotalRequiredHours(state.services);
 
-  const emergencyResponse = totalAvailableHours * EMERGENCY_RESPONSE_SHARE;
-  const testingScaling = totalAvailableHours * TESTING_SCALING_SHARE;
-  const securityCompliance = totalAvailableHours * SECURITY_COMPLIANCE_SHARE;
-  const onCallMonitoring = totalAvailableHours * ON_CALL_MONITORING_SHARE;
+  const emergencyResponse = effectiveCapacityHours * EMERGENCY_RESPONSE_SHARE;
+  const testingScaling = effectiveCapacityHours * TESTING_SCALING_SHARE;
+  const securityCompliance = effectiveCapacityHours * SECURITY_COMPLIANCE_SHARE;
+  const onCallMonitoring = effectiveCapacityHours * ON_CALL_MONITORING_SHARE;
 
   const allocated = maintenance + emergencyResponse + testingScaling + securityCompliance + onCallMonitoring;
   const innovation = Math.max(0, effectiveAvailableHours - allocated);
