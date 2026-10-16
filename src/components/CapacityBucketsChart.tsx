@@ -14,7 +14,7 @@ export function CapacityBucketsChart() {
   const { state } = useDashboard();
   const report = computeCapacityReport(state);
   const { buckets } = report;
-  const total = Object.values(buckets).reduce((sum, v) => sum + v, 0) || 1;
+  const total = Object.values(buckets).reduce((sum, value) => sum + value, 0);
 
   return (
     <section className="dashboard-card capacity-chart" aria-label="Error Budget Buckets" data-testid="capacity-chart">
@@ -22,7 +22,7 @@ export function CapacityBucketsChart() {
       <div className="capacity-chart__bar" role="img" aria-label="Stacked bar chart of capacity buckets">
         {BUCKET_META.map(({ key, label, color }) => {
           const value = buckets[key];
-          const percent = (value / total) * 100;
+          const percent = total > 0 ? (value / total) * 100 : 0;
           return (
             <div
               key={key}
@@ -37,7 +37,7 @@ export function CapacityBucketsChart() {
       <ul className="capacity-chart__legend">
         {BUCKET_META.map(({ key, label, color }) => {
           const value = buckets[key];
-          const percent = (value / total) * 100;
+          const percent = total > 0 ? (value / total) * 100 : 0;
           return (
             <li key={key} className="capacity-chart__legend-item">
               <span className="capacity-chart__swatch" style={{ backgroundColor: color }} />

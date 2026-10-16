@@ -37,6 +37,11 @@ describe("getBaseHours", () => {
   it("sums deploy hours and maintenance hours", () => {
     expect(getBaseHours({ deployHours: 3, maintenanceHours: 4 })).toBe(7);
   });
+
+  it("treats missing, invalid, and non-finite service hours as zero", () => {
+    expect(getBaseHours({ deployHours: undefined, maintenanceHours: Number.NaN } as unknown as Service)).toBe(0);
+    expect(getBaseHours({ deployHours: "12", maintenanceHours: Number.POSITIVE_INFINITY } as unknown as Service)).toBe(12);
+  });
 });
 
 describe("DEFAULT_SERVICES", () => {
@@ -128,6 +133,18 @@ describe("getTotalAvailableHours / getTotalRequiredHours", () => {
     ];
     expect(getTotalRequiredHours(services)).toBe(5);
   });
+
+  it("treats invalid FTE capacity and criticality values defensively", () => {
+    expect(
+      getTotalAvailableHours({ fteCount: Number.NaN, weeklyHours: undefined, annualSalary: 150000 } as unknown as DashboardState["globalConfig"]),
+    ).toBe(0);
+    const service = makeService({
+      deployHours: Number.NaN,
+      maintenanceHours: 5,
+      weight: Number.POSITIVE_INFINITY,
+    });
+    expect(getRequiredHours(service)).toBe(5);
+  });
 });
 
 describe("getEffectiveAvailableHours", () => {
@@ -180,6 +197,40 @@ describe("getAutomationRoiHours", () => {
 });
 
 describe("computeCapacityReport - SRE scenario validation", () => {
+  it("returns finite zero ratios when capacity and input values are invalid", () => {
+    const report = computeCapacityReport({
+      globalConfig: {
+        fteCount: 0,
+        weeklyHours: Number.NaN,
+        annualSalary: 150000,
+      },
+      services: [makeService({ deployHours: undefined as unknown as number, maintenanceHours: Number.NaN })],
+    });
+
+    expect(report.totalAvailableHours).toBe(0);
+    expect(report.totalRequiredHours).toBe(0);
+    expect(report.operationalLoadRatio).toBe(0);
+    expect(report.isRedZone).toBe(false);
+    expect(Object.values(report.buckets).every(Number.isFinite)).toBe(true);
+  });
+
+  it("recalculates bucket workload when automation and expertise change", () => {
+    const state: DashboardState = {
+      globalConfig: { fteCount: 5, weeklyHours: 40, annualSalary: 150000 },
+      services: [makeService({ deployHours: 60, maintenanceHours: 30, hasExpertise: false })],
+    };
+    const manualWithoutExpertise = computeCapacityReport(state);
+    const automatedWithExpertise = computeCapacityReport({
+      ...state,
+      services: [{ ...state.services[0], isAutomated: true, hasExpertise: true }],
+    });
+
+    expect(automatedWithExpertise.buckets.maintenance).toBeCloseTo(manualWithoutExpertise.buckets.maintenance / 3);
+    expect(automatedWithExpertise.effectiveAvailableHours).toBeGreaterThan(
+      manualWithoutExpertise.effectiveAvailableHours,
+    );
+  });
+
   it("Scenario 1: The Overloaded Startup breaches the Red Zone with a large hiring cost", () => {
     const services: Service[] = DEFAULT_SERVICES.map((s) => ({
       ...s,

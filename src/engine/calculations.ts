@@ -41,18 +41,24 @@ export const RED_ZONE_THRESHOLD = 0.5;
 /** Fixed baseline used for financial modeling, per the design plan. */
 export const DEFAULT_ANNUAL_SALARY = 150_000;
 
+function finiteNumber(value: unknown, fallback = 0): number {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
 export function getAutomationDivisor(service: Pick<Service, "isAutomated">): number {
   return service.isAutomated ? AUTOMATION_REDUCTION_FACTOR : 1;
 }
 
 /** Criticality/"blast-radius" multiplier for a service; defaults to 1 when unset. */
 export function getServiceWeight(service: Pick<Service, "weight">): number {
-  return service.weight ?? DEFAULT_SERVICE_WEIGHT;
+  const weight = finiteNumber(service.weight, DEFAULT_SERVICE_WEIGHT);
+  return weight > 0 ? weight : DEFAULT_SERVICE_WEIGHT;
 }
 
 /** Base Hours = Deploying Hours + Maintenance Hours (before automation is applied). */
 export function getBaseHours(service: Pick<Service, "deployHours" | "maintenanceHours">): number {
-  return service.deployHours + service.maintenanceHours;
+  return finiteNumber(service.deployHours) + finiteNumber(service.maintenanceHours);
 }
 
 /**
@@ -81,7 +87,7 @@ export function getTotalRequiredHours(services: Service[]): number {
 }
 
 export function getTotalAvailableHours(globalConfig: GlobalConfig): number {
-  return globalConfig.fteCount * globalConfig.weeklyHours;
+  return finiteNumber(globalConfig.fteCount) * finiteNumber(globalConfig.weeklyHours);
 }
 
 export function getEffectiveAvailableHours(state: DashboardState): number {
@@ -160,7 +166,7 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
     buckets.testingScaling +
     buckets.securityCompliance +
     buckets.onCallMonitoring;
-  const operationalLoadRatio = effectiveAvailableHours > 0 ? operationalLoadHours / effectiveAvailableHours : 1;
+  const operationalLoadRatio = effectiveAvailableHours > 0 ? operationalLoadHours / effectiveAvailableHours : 0;
 
   return {
     services: services.map(getServiceBreakdown),
