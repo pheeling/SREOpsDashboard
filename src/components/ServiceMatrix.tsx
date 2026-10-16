@@ -39,7 +39,7 @@ export function ServiceMatrix() {
   };
 
   return (
-    <section className="service-matrix" aria-label="Service Matrix">
+    <section className="dashboard-card service-matrix" aria-label="Service Matrix">
       <div className="service-matrix__toolbar">
         <h2>
           Services ({activeCount}/{state.services.length} active)

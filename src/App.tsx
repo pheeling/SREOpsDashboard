@@ -30,14 +30,10 @@ function App() {
             <GlobalConfigPanel />
             <WarningBanner />
             <div className="dashboard__grid">
-              <div className="dashboard__left">
-                <CapacityBucketsChart />
-                <HiringCostWidget />
-              </div>
-              <div className="dashboard__right">
-                <LoadGauge />
-                <ServiceMatrix />
-              </div>
+              <CapacityBucketsChart />
+              <HiringCostWidget />
+              <LoadGauge />
+              <ServiceMatrix />
             </div>
           </>
         )}

@@ -1,55 +1,78 @@
 .dashboard {
+  width: 100%;
   max-width: 1280px;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: clamp(0.75rem, 2vw, 1.5rem);
   font-family: system-ui, sans-serif;
+  min-width: 0;
 }
 
 .dashboard__header {
   margin-bottom: 1.5rem;
 }
 
+.dashboard__header p {
+  margin-bottom: 1rem;
+}
+
 .dashboard__grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
-  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
   align-items: start;
 }
 
-.dashboard__left,
-.dashboard__right {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-@media (max-width: 900px) {
+@media (min-width: 768px) {
   .dashboard__grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-.global-config-panel,
-.load-gauge,
-.hiring-cost-widget,
-.service-matrix,
-.summary-report,
-.capacity-chart {
-  padding: 1rem;
+.dashboard-card {
+  min-width: 0;
+  padding: clamp(0.875rem, 2vw, 1.25rem);
   border: 1px solid #d0d7de;
-  border-radius: 8px;
+  border-radius: 0.75rem;
   background: #fff;
+  background-clip: padding-box;
+  color: #334155;
+}
+
+.dashboard-card h2 {
+  color: #0f172a;
+  overflow-wrap: anywhere;
 }
 
 .global-config-panel {
   margin-bottom: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.global-config-panel h2 {
+  grid-column: 1 / -1;
+  margin: 0;
 }
 
 .global-config-panel label {
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
-  margin-right: 1.5rem;
+  min-width: 0;
+  gap: 0.25rem;
   font-size: 0.85rem;
+}
+
+.global-config-panel input {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .dashboard__grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  }
 }
 
 /* --- Warning Banner --- */

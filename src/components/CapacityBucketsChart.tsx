@@ -17,7 +17,7 @@ export function CapacityBucketsChart() {
   const total = Object.values(buckets).reduce((sum, v) => sum + v, 0) || 1;
 
   return (
-    <section className="capacity-chart" aria-label="Error Budget Buckets" data-testid="capacity-chart">
+    <section className="dashboard-card capacity-chart" aria-label="Error Budget Buckets" data-testid="capacity-chart">
       <h2>Error Budget Buckets</h2>
       <div className="capacity-chart__bar" role="img" aria-label="Stacked bar chart of capacity buckets">
         {BUCKET_META.map(({ key, label, color }) => {

@@ -12,7 +12,7 @@ export function HiringCostWidget() {
   const report = computeCapacityReport(state);
 
   return (
-    <section className="hiring-cost-widget" aria-label="Financial Impact: External Hiring Costs" data-testid="hiring-cost-widget">
+    <section className="dashboard-card hiring-cost-widget" aria-label="Financial Impact: External Hiring Costs" data-testid="hiring-cost-widget">
       <h2>Financial Impact: External Hiring Costs</h2>
       {report.hiringCost > 0 ? (
         <p className="hiring-cost-widget__amount" data-testid="hiring-cost-amount">
