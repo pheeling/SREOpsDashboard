@@ -5,6 +5,7 @@
   padding: clamp(0.75rem, 2vw, 1.5rem);
   font-family: system-ui, sans-serif;
   min-width: 0;
+  text-align: left;
 }
 
 .dashboard__header {

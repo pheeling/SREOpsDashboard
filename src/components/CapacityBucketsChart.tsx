@@ -29,13 +29,17 @@ export function CapacityBucketsChart() {
   return (
     <section className="dashboard-card capacity-chart" aria-label="Error Budget Buckets" data-testid="capacity-chart">
       <h2>Error Budget Buckets</h2>
-      <div className="capacity-chart__bar" role="img" aria-label="Stacked bar chart of capacity buckets">
+      <div
+        className="capacity-chart__bar"
+        role="img"
+        aria-label="Stacked bar showing each bucket's share of the total bucket hours"
+      >
         {bucketMetrics.map(({ key, label, color, value, capacityPercent, bucketShare }) => (
           <div
             key={key}
             className="capacity-chart__segment"
             style={{ width: `${bucketShare}%`, backgroundColor: color }}
-            title={`${label}: ${value.toFixed(1)} hrs (${capacityPercent.toFixed(1)}% of FTE capacity)`}
+            title={`${label}: ${value.toFixed(1)} hrs (${bucketShare.toFixed(1)}% of bucket hours; ${capacityPercent.toFixed(1)}% of FTE capacity)`}
             data-testid={`capacity-segment-${key}`}
           />
         ))}

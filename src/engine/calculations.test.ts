@@ -228,6 +228,16 @@ describe("computeCapacityReport - SRE scenario validation", () => {
     expect(Object.values(report.buckets).every(Number.isFinite)).toBe(true);
   });
 
+  it("marks non-zero workload as overloaded when total capacity is zero", () => {
+    const report = computeCapacityReport({
+      globalConfig: { fteCount: 0, weeklyHours: 40, annualSalary: 150000 },
+      services: [makeService({ deployHours: 1, maintenanceHours: 0 })],
+    });
+
+    expect(report.operationalLoadRatio).toBe(1);
+    expect(report.isRedZone).toBe(true);
+  });
+
   it("recalculates bucket workload when automation and expertise change", () => {
     const state: DashboardState = {
       globalConfig: { fteCount: 5, weeklyHours: 40, annualSalary: 150000 },

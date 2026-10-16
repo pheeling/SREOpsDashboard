@@ -174,6 +174,8 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
   if (totalAvailableHours > 0) {
     // A fully exhausted effective capacity with raw capacity available is still a red-zone state.
     operationalLoadRatio = effectiveAvailableHours > 0 ? operationalLoadHours / effectiveAvailableHours : 1;
+  } else if (operationalLoadHours > 0) {
+    operationalLoadRatio = 1;
   }
 
   return {
