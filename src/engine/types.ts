@@ -48,11 +48,11 @@ export interface DashboardState {
   services: Service[];
 }
 
-/** The four Capacity Budget buckets described in the design plan. */
+/** The six Capacity Budget buckets. */
 export interface CapacityBuckets {
-  /** New Features / Innovation: remaining capacity, target >= 50%. */
+  /** New Features / Innovation & Toil Reduction: remaining engineering capacity, target >= 50%. */
   innovation: number;
-  /** Maintenance & Eliminating Toil: operational hours spent on active services. */
+  /** Routine Operations & Maintenance Toil: required hours for active services. */
   maintenance: number;
   /** Emergency Response & Troubleshooting: reserve for unexpected incidents. */
   emergencyResponse: number;
@@ -76,20 +76,18 @@ export interface ServiceBreakdown {
   baseHours: number;
   /** Hours required after the automation divisor and weight are applied (0 when inactive). */
   requiredHours: number;
-  /** Availability penalty (hours) incurred because the team lacks expertise. */
-  expertisePenaltyHours: number;
 }
 
 export interface CapacityReport {
   services: ServiceBreakdown[];
   /** Raw FTE capacity: fteCount * weeklyHours. */
   totalAvailableHours: number;
-  /** Available hours after the expertise-gap availability penalty is applied. */
+  /** Alias for totalAvailableHours, retained for consumers of the capacity report. */
   effectiveAvailableHours: number;
   /** Sum of active services' required operational hours. */
   totalRequiredHours: number;
   buckets: CapacityBuckets;
-  /** maintenance + emergencyResponse + testingScaling + securityCompliance + onCallMonitoring. */
+  /** Routine operations/toil plus incident response, testing/scaling, patching, and on-call reserves. */
   operationalLoadHours: number;
   /** operationalLoadHours / effectiveAvailableHours, expressed 0..1 (or higher if over capacity). */
   operationalLoadRatio: number;

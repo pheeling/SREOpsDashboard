@@ -22,33 +22,32 @@ or improve its systems.
     database costs the operations team more effort than a misconfigured printer. Adjustable per service
     in the Service Matrix (`Criticality Weight` field).
   - Inactive services contribute `0` hours.
-- **Technical Expertise penalty** — if a team lacks in-house expertise (`hasExpertise = false`) for an
-  active service, `20%` (1/5) of *that service's own* required hours is subtracted from effective capacity,
-  modeling the "learning curve" cost of operating something the team doesn't understand yet.
-  This is scoped per-service (not a single global cut) so that gaps in niche services don't
-  disproportionately punish teams that are strong everywhere else.
-- **Capacity Budget** — effective capacity hours
-  (`fteCount * weeklyHours * capacityEfficiencyFactor`, default `0.8`) account for non-project overhead
-  before allocations; the expertise penalty is then subtracted from availability. Effective capacity is
-  allocated across six buckets:
-  - **Maintenance & Eliminating Toil** — sum of all active services' Required Hours (linear in the
-    number of services).
-  - **Emergency Response & Troubleshooting** — fixed `10%` of effective capacity hours, reserved for
+- **Technical Expertise multiplier** — if a team lacks in-house expertise (`hasExpertise = false`) for an
+  active service, that service's required hours increase by `25%` to model the learning curve of operating
+  something the team doesn't understand yet. This increases workload without reducing contracted FTE
+  availability.
+- **Capacity Budget** — available hours (`fteCount * weeklyHours`) are allocated across six buckets:
+  - **Routine Operations & Maintenance Toil** — sum of all active services' Required Hours (linear in
+    the number of services).
+  - **Emergency Response & Troubleshooting** — fixed `10%` of raw available hours, reserved for
     unplanned incidents.
   - **Testing & User Scaling** — fixed `5%` of effective capacity hours, reserved for growth/load prep.
   - **Security & Compliance Patching** — fixed `8%` of effective capacity hours, reserved for CVE
     remediation, audits, and policy upkeep.
   - **On-Call & Monitoring** — fixed `7%` of effective capacity hours, reserved for alert triage, dashboards,
     and SLO tracking.
-  - **New Features / Innovation** — whatever effective capacity remains after the five buckets above
-    (never negative).
-- **Red Zone** — when `Maintenance + Emergency Response + Testing/Scaling + Security/Compliance +
+  - **New Features / Innovation & Toil Reduction** — engineering capacity for feature work, automation,
+    CI/CD improvements, and self-healing tooling; whatever effective capacity remains after the five
+    operational buckets above (never negative). Time invested in this engineering work is not operational
+    overhead.
+- **Red Zone** — when `Routine Operations + Emergency Response + Testing/Scaling + Security/Compliance +
   On-Call/Monitoring` exceeds **50%** of effective available capacity, the Load Gauge enters the
   Red Zone: the SRE-mandated ceiling on operational work, below which meaningful innovation can still
   happen. Crossing it signals an "Operational Death Spiral" — the team is losing control of the estate.
-- **Hiring Cost Estimator** — `((Required_Hours - Available_Hours) / weeklyHours) * annualSalary`. The
-  tool assumes a company prefers to grow its own staff; whenever required hours exceed effective
-  availability, the shortfall is expressed as an annualized *external hiring cost* instead.
+- **Hiring Cost Estimator** — `max(0, Operational_Hours - 0.5 * Available_Hours) / (0.5 * weeklyHours) * annualSalary`.
+  Hiring is triggered as soon as operational load crosses the 50% Red Zone; each new SRE is assumed to
+  put 50% of their hours toward toil (the other 50% stays for engineering), restoring a sustainable
+  50% operational balance. At or below 50% load the cost is `$0`.
 - **Automation ROI Summary Report** — a printable view showing the annualized dollar savings of
   automating each remaining manual service.
 - **On-Call Staffing Guardrail** — warns when fewer than four engineers are configured, as a team of that size

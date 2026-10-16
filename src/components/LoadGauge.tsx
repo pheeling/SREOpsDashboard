@@ -64,7 +64,7 @@ export function LoadGauge() {
         {gaugeLabel(loadPercent)}
       </p>
       <p className="load-gauge__detail">
-        {report.operationalLoadHours.toFixed(1)} / {report.effectiveAvailableHours.toFixed(1)} hrs toward toil
+        {report.operationalLoadHours.toFixed(1)} / {report.effectiveAvailableHours.toFixed(1)} hrs toward operational work
       </p>
     </section>
   );

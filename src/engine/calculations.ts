@@ -17,8 +17,8 @@ import type {
 /** Divisor applied to a service's hours once it has been automated ("1/3 Automation Rule"). */
 export const AUTOMATION_REDUCTION_FACTOR = 3;
 
-/** Fraction of a service's operational hours reduced from FTE availability when the team lacks expertise. */
-export const EXPERTISE_AVAILABILITY_PENALTY = 0.2;
+/** Effort multiplier applied to services the team lacks expertise to operate. */
+export const EXPERTISE_EFFORT_MULTIPLIER = 1.25;
 
 /** Default share of contracted hours available for technical work after overhead. */
 export const DEFAULT_CAPACITY_EFFICIENCY_FACTOR = 0.8;
@@ -71,22 +71,13 @@ export function getBaseHours(service: Pick<Service, "deployHours" | "maintenance
 /**
  * Required_Hours for a single service: Base Hours divided by 3 when
  * automation is toggled on, then multiplied by the service's criticality
- * weight. Inactive services contribute 0 hours to the active workload.
+ * weight, then multiplied by 1.25 when the team lacks expertise. Inactive
+ * services contribute 0 hours to the active workload.
  */
 export function getRequiredHours(service: Service): number {
   if (!service.isActive) return 0;
-  return (getBaseHours(service) / getAutomationDivisor(service)) * getServiceWeight(service);
-}
-
-/**
- * The availability penalty (in hours) incurred because the team lacks
- * technical expertise for this service: 20% of the service's own required
- * hours, subtracted from effective capacity. Only applies to active
- * services.
- */
-export function getExpertisePenaltyHours(service: Service): number {
-  if (!service.isActive || service.hasExpertise) return 0;
-  return getRequiredHours(service) * EXPERTISE_AVAILABILITY_PENALTY;
+  const expertiseMultiplier = service.hasExpertise ? 1 : EXPERTISE_EFFORT_MULTIPLIER;
+  return (getBaseHours(service) / getAutomationDivisor(service)) * getServiceWeight(service) * expertiseMultiplier;
 }
 
 export function getTotalRequiredHours(services: Service[]): number {
@@ -106,9 +97,7 @@ export function getEffectiveCapacityHours(globalConfig: GlobalConfig): number {
 }
 
 export function getEffectiveAvailableHours(state: DashboardState): number {
-  const effectiveCapacityHours = getEffectiveCapacityHours(state.globalConfig);
-  const penalty = state.services.reduce((sum, service) => sum + getExpertisePenaltyHours(service), 0);
-  return Math.max(0, effectiveCapacityHours - penalty);
+  return getTotalAvailableHours(state.globalConfig);
 }
 
 export function getServiceBreakdown(service: Service): ServiceBreakdown {
@@ -121,16 +110,15 @@ export function getServiceBreakdown(service: Service): ServiceBreakdown {
     weight: getServiceWeight(service),
     baseHours: getBaseHours(service),
     requiredHours: getRequiredHours(service),
-    expertisePenaltyHours: getExpertisePenaltyHours(service),
   };
 }
 
 /**
- * Allocates capacity across the six Capacity Budget buckets. Maintenance &
- * Eliminating Toil is derived directly from active services; Emergency
- * Response, Testing & Scaling, Security & Compliance Patching, and On-Call &
- * Monitoring use fixed shares of effective capacity; Innovation absorbs whatever
- * effective capacity remains (never negative).
+ * Allocates capacity across the six Capacity Budget buckets. Routine
+ * Operations & Maintenance Toil is derived directly from active services;
+ * Emergency Response, Testing & Scaling, Security & Compliance Patching, and
+ * On-Call & Monitoring use fixed shares of raw capacity; Innovation & Toil
+ * Reduction absorbs whatever effective capacity remains (never negative).
  */
 export function getCapacityBuckets(state: DashboardState): CapacityBuckets {
   const effectiveCapacityHours = getEffectiveCapacityHours(state.globalConfig);
@@ -150,22 +138,22 @@ export function getCapacityBuckets(state: DashboardState): CapacityBuckets {
 
 /**
  * Financial Widget: "External Hiring Costs".
- * ((Required_Hours - Available_Hours) / Total_Available_Weekly_Hours) * Annual_Salary_Baseline
+ * Each hire contributes 50% of weekly hours to operational work, restoring the
+ * team to the 50% operational limit:
+ * max(0, Operational_Hours - 0.5 * Available_Hours) / (0.5 * weeklyHours) * Annual_Salary
  */
 export function getHiringCost(
-  totalRequiredHours: number,
+  operationalHours: number,
   effectiveAvailableHours: number,
   globalConfig: GlobalConfig,
 ): number {
-  totalRequiredHours = finiteNumber(totalRequiredHours);
+  operationalHours = finiteNumber(operationalHours);
   effectiveAvailableHours = finiteNumber(effectiveAvailableHours);
   const weeklyHours = finiteNumber(globalConfig.weeklyHours);
   const annualSalary = finiteNumber(globalConfig.annualSalary);
-  if (totalRequiredHours <= effectiveAvailableHours) {
-    return 0;
-  }
-  const deficitHours = totalRequiredHours - effectiveAvailableHours;
-  return weeklyHours > 0 ? (deficitHours / weeklyHours) * annualSalary : 0;
+  const toilDeficit = Math.max(0, operationalHours - RED_ZONE_THRESHOLD * effectiveAvailableHours);
+  if (toilDeficit <= 0 || weeklyHours <= 0) return 0;
+  return (toilDeficit / (RED_ZONE_THRESHOLD * weeklyHours)) * annualSalary;
 }
 
 /**
@@ -189,6 +177,8 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
   const effectiveAvailableHours = getEffectiveAvailableHours(state);
   const totalRequiredHours = getTotalRequiredHours(services);
   const buckets = getCapacityBuckets(state);
+  // Operational load is routine toil plus reactive/admin reserves only;
+  // engineering capacity for automation and toil reduction stays in innovation.
   const operationalLoadHours =
     buckets.maintenance +
     buckets.emergencyResponse +
@@ -206,7 +196,7 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
     operationalLoadHours,
     operationalLoadRatio,
     isRedZone: operationalLoadRatio > RED_ZONE_THRESHOLD,
-    hiringCost: getHiringCost(totalRequiredHours, effectiveAvailableHours, globalConfig),
+    hiringCost: getHiringCost(operationalLoadHours, effectiveAvailableHours, globalConfig),
   };
 }
 
