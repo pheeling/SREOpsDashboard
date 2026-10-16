@@ -59,6 +59,16 @@ describe("App", () => {
     await user.click(screen.getByTestId("toggle-summary-report"));
 
     expect(screen.getByTestId("summary-report")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Engineering time spent building automation.*belongs in New Features \/ Innovation & Toil Reduction/),
+    ).toBeInTheDocument();
+  });
+
+  it("distinguishes routine operations from engineering toil reduction in capacity buckets", () => {
+    render(<App />);
+
+    expect(screen.getByText("Routine Operations & Maintenance Toil")).toBeInTheDocument();
+    expect(screen.getByText("New Features / Innovation & Toil Reduction")).toBeInTheDocument();
   });
 
   it("deletes a single service, delete-all empties the catalog, and defaults can be restored", async () => {

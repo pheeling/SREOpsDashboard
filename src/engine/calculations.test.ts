@@ -220,6 +220,18 @@ describe("getAutomationRoiDollars", () => {
 });
 
 describe("computeCapacityReport - SRE scenario validation", () => {
+  it("counts routine and reactive work as operational load, not innovation capacity", () => {
+    const report = computeCapacityReport({
+      globalConfig: { fteCount: 10, weeklyHours: 40, annualSalary: 150000 },
+      services: [],
+    });
+
+    expect(report.operationalLoadHours).toBe(120);
+    expect(report.buckets.innovation).toBe(280);
+    expect(report.operationalLoadRatio).toBe(0.3);
+    expect(report.isRedZone).toBe(false);
+  });
+
   it("returns finite zero ratios when capacity and input values are invalid", () => {
     const report = computeCapacityReport({
       globalConfig: {
