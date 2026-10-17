@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../App";
+import { STORAGE_KEY } from "../state/localStorage";
 
 describe("App", () => {
   beforeEach(() => {
@@ -73,6 +74,55 @@ describe("App", () => {
 
     const after = Number(badge?.textContent?.match(/[\d.]+/)?.[0]);
     expect(after).toBeCloseTo(before * 1.25);
+  });
+
+  it("shows PRR status and applies the maintenance surcharge when approval is toggled off", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const card = screen.getByTestId("service-card-databases");
+    expect(card.querySelector(".service-card__prr-badge")).toHaveTextContent("PRR Approved");
+    expect(within(card).getByText("240.00 hrs/wk")).toBeInTheDocument();
+
+    await user.click(within(card).getByLabelText("Databases PRR Approved"));
+
+    expect(card.querySelector(".service-card__prr-badge")).toHaveTextContent("PRR Deficient");
+    expect(within(card).getByText("256.00 hrs/wk")).toBeInTheDocument();
+  });
+
+  it("treats services in older saved dashboards as PRR approved", () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        globalConfig: { fteCount: 1, weeklyHours: 40, annualSalary: 150000 },
+        services: [
+          {
+            id: "legacy",
+            name: "Legacy Service",
+            deployHours: 1,
+            maintenanceHours: 1,
+            isActive: true,
+            hasExpertise: true,
+            isAutomated: false,
+          },
+        ],
+      }),
+    );
+    render(<App />);
+
+    const card = screen.getByTestId("service-card-legacy");
+    expect(within(card).getByLabelText("Legacy Service PRR Approved")).toBeChecked();
+    expect(card.querySelector(".service-card__prr-badge")).toHaveTextContent("PRR Approved");
+  });
+
+  it("maps active services into the criticality/toil quadrants and flags low-criticality high-toil work", () => {
+    render(<App />);
+
+    const quadrant = screen.getByTestId("criticality-quadrant");
+    const reviewCell = within(quadrant).getByRole("region", { name: "Low criticality · High toil" });
+    expect(within(reviewCell).getByText(/Candidates for Deprecation, SaaS Replacement, or Immediate Dev Handback/)).toBeInTheDocument();
+    expect(within(reviewCell).getByText(/Backup/)).toBeInTheDocument();
+    expect(within(quadrant).getByRole("region", { name: "High criticality · High toil" })).toHaveTextContent("Databases");
   });
 
   it("updates the internal upskilling dividend when a service's expertise changes", async () => {

@@ -3,8 +3,9 @@ import type { FormEvent } from "react";
 import type { OwnershipModel } from "../engine/types";
 import { useDashboard } from "../state/DashboardContext";
 import { ServiceCard } from "./ServiceCard";
-import { ParetoToilPanel } from "./ParetoToilPanel";
 import { getParetoToilRanking, getTotalRequiredHours } from "../engine/calculations";
+import { CriticalityToilQuadrant } from "./CriticalityToilQuadrant";
+import { ParetoToilPanel } from "./ParetoToilPanel";
 
 export function ServiceMatrix() {
   const { state, dispatch } = useDashboard();
@@ -16,6 +17,7 @@ export function ServiceMatrix() {
   const handleToggleActive = (serviceId: string) => dispatch({ type: "TOGGLE_ACTIVE", serviceId });
   const handleToggleExpertise = (serviceId: string) => dispatch({ type: "TOGGLE_EXPERTISE", serviceId });
   const handleToggleAutomation = (serviceId: string) => dispatch({ type: "TOGGLE_AUTOMATION", serviceId });
+  const handleTogglePrr = (serviceId: string) => dispatch({ type: "TOGGLE_PRR_APPROVED", serviceId });
   const handleChangeWeight = (serviceId: string, weight: number) =>
     dispatch({ type: "UPDATE_SERVICE_WEIGHT", serviceId, weight });
 
@@ -125,6 +127,7 @@ export function ServiceMatrix() {
         </form>
       )}
 
+      <CriticalityToilQuadrant services={state.services} />
       <ParetoToilPanel />
 
       {state.services.length === 0 ? (
@@ -149,6 +152,7 @@ export function ServiceMatrix() {
               onToggleActive={handleToggleActive}
               onToggleExpertise={handleToggleExpertise}
               onToggleAutomation={handleToggleAutomation}
+              onTogglePrr={handleTogglePrr}
               onChangeWeight={handleChangeWeight}
               onChangeOwnership={handleChangeOwnership}
               onDelete={handleDelete}

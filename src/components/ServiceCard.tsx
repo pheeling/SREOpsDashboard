@@ -7,6 +7,7 @@ interface ServiceCardProps {
   onToggleActive: (id: string) => void;
   onToggleExpertise: (id: string) => void;
   onToggleAutomation: (id: string) => void;
+  onTogglePrr: (id: string) => void;
   onChangeWeight: (id: string, weight: number) => void;
   onChangeOwnership: (id: string, ownershipModel: OwnershipModel) => void;
   onDelete: (id: string) => void;
@@ -18,6 +19,7 @@ export function ServiceCard({
   onToggleActive,
   onToggleExpertise,
   onToggleAutomation,
+  onTogglePrr,
   onChangeWeight,
   onChangeOwnership,
   onDelete,
@@ -55,6 +57,9 @@ export function ServiceCard({
         </span>
       </div>
 
+      <span className={`service-card__prr-badge ${service.prrApproved ? "service-card__prr-badge--approved" : "service-card__prr-badge--deficient"}`}>
+        PRR {service.prrApproved ? "Approved" : "Deficient"}
+      </span>
       {isTopToilContributor && (
         <p className="service-card__top-toil" data-testid={`top-toil-badge-${service.id}`}>
           Top Toil Contributor
@@ -85,6 +90,15 @@ export function ServiceCard({
             aria-label={`${service.name} Expertise`}
           />
           Expertise
+        </label>
+        <label className={`service-card__toggle ${service.prrApproved ? "service-card__toggle--on" : ""}`}>
+          <input
+            type="checkbox"
+            checked={service.prrApproved}
+            onChange={() => onTogglePrr(service.id)}
+            aria-label={`${service.name} PRR Approved`}
+          />
+          PRR Approved
         </label>
       </div>
 

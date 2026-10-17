@@ -6,6 +6,7 @@ import {
   DEFAULT_SERVICE_WEIGHT,
   EXPERTISE_EFFORT_MULTIPLIER,
   ON_CALL_MONITORING_SHARE,
+  PRR_FRICTION_MULTIPLIER,
   SECURITY_COMPLIANCE_SHARE,
   calculateUpskillingDividend,
   computeCapacityReport,
@@ -36,6 +37,7 @@ function makeService(overrides: Partial<Service> = {}): Service {
     isActive: true,
     hasExpertise: true,
     isAutomated: false,
+    prrApproved: true,
     ...overrides,
   };
 }
@@ -76,6 +78,7 @@ describe("DEFAULT_SERVICES", () => {
       { id: "databases", deployHours: 80, maintenanceHours: 40 },
     ]);
     expect(DEFAULT_SERVICES.every((service) => service.isActive && service.hasExpertise && !service.isAutomated)).toBe(true);
+    expect(DEFAULT_SERVICES.every((service) => service.prrApproved)).toBe(true);
   });
 });
 
@@ -118,6 +121,14 @@ describe("getRequiredHours", () => {
     const withExpertise = getRequiredHours(makeService({ deployHours: 4, maintenanceHours: 4 }));
     const withoutExpertise = getRequiredHours(makeService({ deployHours: 4, maintenanceHours: 4, hasExpertise: false }));
     expect(withoutExpertise).toBeCloseTo(withExpertise * EXPERTISE_EFFORT_MULTIPLIER);
+  });
+
+  it("adds a 20% surcharge to maintenance hours when PRR approval is missing", () => {
+    const approved = getRequiredHours(makeService({ deployHours: 10, maintenanceHours: 5 }));
+    const deficient = getRequiredHours(makeService({ deployHours: 10, maintenanceHours: 5, prrApproved: false }));
+
+    expect(deficient).toBeCloseTo(10 + 5 * PRR_FRICTION_MULTIPLIER);
+    expect(deficient).toBeGreaterThan(approved);
   });
 });
 
@@ -481,7 +492,7 @@ describe("Pareto toil ranking & stabilization sprint", () => {
 });
 
 describe("ownership model & handback", () => {
-  const base = { id: "x", name: "X", deployHours: 10, maintenanceHours: 10, isActive: true, hasExpertise: true, isAutomated: false };
+  const base = { id: "x", name: "X", deployHours: 10, maintenanceHours: 10, isActive: true, hasExpertise: true, isAutomated: false, prrApproved: true };
 
   it("scales required hours by ownership multiplier", () => {
     expect(getRequiredHours(base)).toBe(20);
