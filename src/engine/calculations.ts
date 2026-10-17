@@ -38,6 +38,9 @@ export const ON_CALL_MONITORING_SHARE = 0.07;
 /** Default criticality/"blast-radius" weight applied to a service when none is specified. */
 export const DEFAULT_SERVICE_WEIGHT = 1;
 
+/** Share of gross innovation hours lost to context switching when no interrupt shield is in place. */
+export const CONTEXT_SWITCH_DRAG = 0.2;
+
 /** SRE-mandated ceiling on manual operational work as a share of total capacity. */
 export const RED_ZONE_THRESHOLD = 0.5;
 
@@ -131,9 +134,17 @@ export function getCapacityBuckets(state: DashboardState): CapacityBuckets {
   const onCallMonitoring = effectiveCapacityHours * ON_CALL_MONITORING_SHARE;
 
   const allocated = maintenance + emergencyResponse + testingScaling + securityCompliance + onCallMonitoring;
-  const innovation = Math.max(0, effectiveAvailableHours - allocated);
+  const rawInnovation = Math.max(0, effectiveAvailableHours - allocated);
+  const innovation = state.globalConfig.hasInterruptShield ? rawInnovation : rawInnovation * (1 - CONTEXT_SWITCH_DRAG);
 
   return { innovation, maintenance, emergencyResponse, testingScaling, securityCompliance, onCallMonitoring };
+}
+
+/** Raw innovation hours lost to (or, with the shield, recovered from) context-switching drag. */
+export function getRawContextSwitchHours(state: DashboardState): number {
+  const buckets = getCapacityBuckets(state);
+  const raw = state.globalConfig.hasInterruptShield ? buckets.innovation : buckets.innovation / (1 - CONTEXT_SWITCH_DRAG);
+  return raw * CONTEXT_SWITCH_DRAG;
 }
 
 /**
@@ -186,8 +197,12 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
     buckets.securityCompliance +
     buckets.onCallMonitoring;
   const operationalLoadRatio = getOperationalLoadRatio(operationalLoadHours, effectiveAvailableHours);
+  const contextSwitchHours = getRawContextSwitchHours(state);
+  const hasShield = Boolean(globalConfig.hasInterruptShield);
 
   return {
+    cognitiveOverheadHours: hasShield ? 0 : contextSwitchHours,
+    recoveredInnovationHours: hasShield ? contextSwitchHours : 0,
     services: services.map(getServiceBreakdown),
     totalAvailableHours,
     effectiveAvailableHours,
