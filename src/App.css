@@ -412,3 +412,17 @@
   font-weight: 600;
   cursor: pointer;
 }
+
+/* --- Handback Simulator --- */
+.handback-simulator {
+  border-color: #c53030;
+}
+
+.handback-simulator__list {
+  list-style: none;
+  padding: 0;
+}
+
+.handback-simulator__list li {
+  margin-bottom: 0.5rem;
+}

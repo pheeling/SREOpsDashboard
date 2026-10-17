@@ -10,6 +10,7 @@ import type {
   CapacityReport,
   DashboardState,
   GlobalConfig,
+  OwnershipModel,
   Service,
   ServiceBreakdown,
 } from "./types";
@@ -38,8 +39,18 @@ export const ON_CALL_MONITORING_SHARE = 0.07;
 /** Default criticality/"blast-radius" weight applied to a service when none is specified. */
 export const DEFAULT_SERVICE_WEIGHT = 1;
 
-/** Share of gross innovation hours lost to context switching when no interrupt shield is in place. */
-export const CONTEXT_SWITCH_DRAG = 0.2;
+/** Share of a service's toil absorbed by SRE under each ownership model. */
+export const OWNERSHIP_MULTIPLIERS: Record<OwnershipModel, number> = {
+  sre_full: 1,
+  shared: 0.5,
+  dev_owned: 0.1,
+};
+
+export const OWNERSHIP_LABELS: Record<OwnershipModel, string> = {
+  sre_full: "SRE Full",
+  shared: "Shared",
+  dev_owned: "Dev Owned",
+};
 
 /** SRE-mandated ceiling on manual operational work as a share of total capacity. */
 export const RED_ZONE_THRESHOLD = 0.5;
@@ -66,6 +77,14 @@ export function getServiceWeight(service: Pick<Service, "weight">): number {
   return weight >= 0 ? weight : DEFAULT_SERVICE_WEIGHT;
 }
 
+export function getOwnershipModel(service: Pick<Service, "ownershipModel">): OwnershipModel {
+  return service.ownershipModel && service.ownershipModel in OWNERSHIP_MULTIPLIERS ? service.ownershipModel : "sre_full";
+}
+
+export function getOwnershipMultiplier(service: Pick<Service, "ownershipModel">): number {
+  return OWNERSHIP_MULTIPLIERS[getOwnershipModel(service)];
+}
+
 /** Base Hours = Deploying Hours + Maintenance Hours (before automation is applied). */
 export function getBaseHours(service: Pick<Service, "deployHours" | "maintenanceHours">): number {
   return finiteNumber(service.deployHours) + finiteNumber(service.maintenanceHours);
@@ -80,7 +99,7 @@ export function getBaseHours(service: Pick<Service, "deployHours" | "maintenance
 export function getRequiredHours(service: Service): number {
   if (!service.isActive) return 0;
   const expertiseMultiplier = service.hasExpertise ? 1 : EXPERTISE_EFFORT_MULTIPLIER;
-  return (getBaseHours(service) / getAutomationDivisor(service)) * getServiceWeight(service) * expertiseMultiplier;
+  return (getBaseHours(service) / getAutomationDivisor(service)) * getServiceWeight(service) * expertiseMultiplier * getOwnershipMultiplier(service);
 }
 
 export function getTotalRequiredHours(services: Service[]): number {
@@ -111,6 +130,7 @@ export function getServiceBreakdown(service: Service): ServiceBreakdown {
     isAutomated: service.isAutomated,
     hasExpertise: service.hasExpertise,
     weight: getServiceWeight(service),
+    ownershipModel: getOwnershipModel(service),
     baseHours: getBaseHours(service),
     requiredHours: getRequiredHours(service),
   };
@@ -212,7 +232,37 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
     operationalLoadRatio,
     isRedZone: operationalLoadRatio > RED_ZONE_THRESHOLD,
     hiringCost: getHiringCost(operationalLoadHours, effectiveAvailableHours, globalConfig),
+    deficitHours: getDeficitHours(operationalLoadHours, effectiveAvailableHours),
   };
+}
+
+/** Deficit Hours = Operational Load Hours - 0.5 * Contracted Team Hours (never negative). */
+export function getDeficitHours(operationalLoadHours: number, contractedHours: number): number {
+  return Math.max(0, finiteNumber(operationalLoadHours) - RED_ZONE_THRESHOLD * finiteNumber(contractedHours));
+}
+
+export interface HandbackCandidate {
+  serviceId: string;
+  name: string;
+  /** Weekly hours removed from SRE toil if the service becomes dev-owned. */
+  hoursSaved: number;
+}
+
+/**
+ * Recommends up to `limit` active services whose handback to product
+ * development sheds the most toil.
+ */
+export function getHandbackCandidates(services: Service[], limit = 2): HandbackCandidate[] {
+  return services
+    .filter((service) => service.isActive && getOwnershipModel(service) !== "dev_owned")
+    .map((service) => ({
+      serviceId: service.id,
+      name: service.name,
+      hoursSaved: getRequiredHours(service) - getRequiredHours({ ...service, ownershipModel: "dev_owned" }),
+    }))
+    .filter((candidate) => candidate.hoursSaved > 0)
+    .sort((a, b) => b.hoursSaved - a.hoursSaved)
+    .slice(0, limit);
 }
 
 /**

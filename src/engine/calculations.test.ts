@@ -12,6 +12,9 @@ import {
   getBaseHours,
   getCapacityBuckets,
   getEffectiveAvailableHours,
+  getDeficitHours,
+  getEffectiveCapacityHours,
+  getHandbackCandidates,
   getHiringCost,
   getRequiredHours,
   getServiceWeight,
@@ -406,23 +409,20 @@ describe("Toil Elimination Audit", () => {
   });
 });
 
-describe("interrupt shield", () => {
-  const base = (hasInterruptShield: boolean): DashboardState => ({
-    globalConfig: { fteCount: 5, weeklyHours: 40, annualSalary: 150_000, hasInterruptShield },
-    services: [],
+describe("ownership model & handback", () => {
+  const base = { id: "x", name: "X", deployHours: 10, maintenanceHours: 10, isActive: true, hasExpertise: true, isAutomated: false };
+
+  it("scales required hours by ownership multiplier", () => {
+    expect(getRequiredHours(base)).toBe(20);
+    expect(getRequiredHours({ ...base, ownershipModel: "shared" })).toBe(10);
+    expect(getRequiredHours({ ...base, ownershipModel: "dev_owned" })).toBeCloseTo(2);
   });
 
-  it("applies a 20% context-switching drag when disabled", () => {
-    const raw = computeCapacityReport(base(true)).buckets.innovation;
-    const report = computeCapacityReport(base(false));
-    expect(report.buckets.innovation).toBeCloseTo(raw * 0.8);
-    expect(report.cognitiveOverheadHours).toBeCloseTo(raw * 0.2);
-    expect(report.recoveredInnovationHours).toBe(0);
-  });
-
-  it("removes cognitive overhead and reports recovered hours when enabled", () => {
-    const report = computeCapacityReport(base(true));
-    expect(report.cognitiveOverheadHours).toBe(0);
-    expect(report.recoveredInnovationHours).toBeCloseTo(report.buckets.innovation * 0.2);
+  it("recommends the biggest handback candidates and computes deficit", () => {
+    const services = [base, { ...base, id: "y", name: "Y", deployHours: 40 }, { ...base, id: "z", ownershipModel: "dev_owned" as const }];
+    const candidates = getHandbackCandidates(services);
+    expect(candidates.map((c) => c.serviceId)).toEqual(["y", "x"]);
+    expect(getDeficitHours(60, 100)).toBe(10);
+    expect(getDeficitHours(40, 100)).toBe(0);
   });
 });
