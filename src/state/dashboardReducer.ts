@@ -11,6 +11,7 @@ export type DashboardAction =
   | { type: "TOGGLE_ACTIVE"; serviceId: string }
   | { type: "TOGGLE_EXPERTISE"; serviceId: string }
   | { type: "TOGGLE_AUTOMATION"; serviceId: string }
+  | { type: "TOGGLE_PRR_APPROVED"; serviceId: string }
   | { type: "UPDATE_SERVICE_WEIGHT"; serviceId: string; weight: number }
   | { type: "ADD_CUSTOM_SERVICE"; payload: NewCustomService }
   | { type: "DELETE_SERVICE"; serviceId: string }
@@ -48,6 +49,8 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
       return toggleServiceField(state, action.serviceId, "hasExpertise");
     case "TOGGLE_AUTOMATION":
       return toggleServiceField(state, action.serviceId, "isAutomated");
+    case "TOGGLE_PRR_APPROVED":
+      return toggleServiceField(state, action.serviceId, "prrApproved");
     case "UPDATE_SERVICE_WEIGHT": {
       const safeWeight = Number.isFinite(action.weight) && action.weight > 0 ? action.weight : 1;
       return {
@@ -74,6 +77,7 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
         isActive: true,
         hasExpertise: true,
         isAutomated: false,
+        prrApproved: true,
         isCustom: true,
       };
       return { ...state, services: [...state.services, newService] };

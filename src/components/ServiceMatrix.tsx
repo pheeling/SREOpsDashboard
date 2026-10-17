@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { useDashboard } from "../state/DashboardContext";
 import { ServiceCard } from "./ServiceCard";
 import { getTotalRequiredHours } from "../engine/calculations";
+import { CriticalityToilQuadrant } from "./CriticalityToilQuadrant";
 
 export function ServiceMatrix() {
   const { state, dispatch } = useDashboard();
@@ -14,6 +15,7 @@ export function ServiceMatrix() {
   const handleToggleActive = (serviceId: string) => dispatch({ type: "TOGGLE_ACTIVE", serviceId });
   const handleToggleExpertise = (serviceId: string) => dispatch({ type: "TOGGLE_EXPERTISE", serviceId });
   const handleToggleAutomation = (serviceId: string) => dispatch({ type: "TOGGLE_AUTOMATION", serviceId });
+  const handleTogglePrr = (serviceId: string) => dispatch({ type: "TOGGLE_PRR_APPROVED", serviceId });
   const handleChangeWeight = (serviceId: string, weight: number) =>
     dispatch({ type: "UPDATE_SERVICE_WEIGHT", serviceId, weight });
 
@@ -116,6 +118,8 @@ export function ServiceMatrix() {
         </form>
       )}
 
+      <CriticalityToilQuadrant services={state.services} />
+
       {state.services.length === 0 ? (
         <div className="service-matrix__empty" data-testid="services-empty-state">
           <p>No active services in catalog.</p>
@@ -137,6 +141,7 @@ export function ServiceMatrix() {
               onToggleActive={handleToggleActive}
               onToggleExpertise={handleToggleExpertise}
               onToggleAutomation={handleToggleAutomation}
+              onTogglePrr={handleTogglePrr}
               onChangeWeight={handleChangeWeight}
               onDelete={handleDelete}
             />

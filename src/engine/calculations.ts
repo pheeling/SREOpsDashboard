@@ -20,6 +20,9 @@ export const AUTOMATION_REDUCTION_FACTOR = 3;
 /** Effort multiplier applied to services the team lacks expertise to operate. */
 export const EXPERTISE_EFFORT_MULTIPLIER = 1.25;
 
+/** Effort multiplier applied to maintenance hours when a service lacks PRR approval. */
+export const PRR_FRICTION_MULTIPLIER = 1.2;
+
 /** Default share of contracted hours available for technical work after overhead. */
 export const DEFAULT_CAPACITY_EFFICIENCY_FACTOR = 0.8;
 
@@ -71,13 +74,16 @@ export function getBaseHours(service: Pick<Service, "deployHours" | "maintenance
 /**
  * Required_Hours for a single service: Base Hours divided by 3 when
  * automation is toggled on, then multiplied by the service's criticality
- * weight, then multiplied by 1.25 when the team lacks expertise. Inactive
- * services contribute 0 hours to the active workload.
+ * weight, then multiplied by 1.25 when the team lacks expertise. Maintenance
+ * hours are multiplied by 1.2 when PRR approval is missing. Inactive services
+ * contribute 0 hours to the active workload.
  */
 export function getRequiredHours(service: Service): number {
   if (!service.isActive) return 0;
   const expertiseMultiplier = service.hasExpertise ? 1 : EXPERTISE_EFFORT_MULTIPLIER;
-  return (getBaseHours(service) / getAutomationDivisor(service)) * getServiceWeight(service) * expertiseMultiplier;
+  const prrMultiplier = service.prrApproved === false ? PRR_FRICTION_MULTIPLIER : 1;
+  const baseHours = finiteNumber(service.deployHours) + finiteNumber(service.maintenanceHours) * prrMultiplier;
+  return (baseHours / getAutomationDivisor(service)) * getServiceWeight(service) * expertiseMultiplier;
 }
 
 export function getTotalRequiredHours(services: Service[]): number {

@@ -1,4 +1,4 @@
-import type { DashboardState } from "../engine/types";
+import type { DashboardState, Service } from "../engine/types";
 
 export const STORAGE_KEY = "sre-ops-dashboard:state";
 
@@ -10,7 +10,13 @@ export function loadState(): DashboardState | null {
     if (!parsed || !parsed.globalConfig || !Array.isArray(parsed.services)) {
       return null;
     }
-    return parsed as DashboardState;
+    return {
+      ...parsed,
+      services: parsed.services.map((service: Service) => ({
+        ...service,
+        prrApproved: service.prrApproved !== false,
+      })),
+    } as DashboardState;
   } catch {
     return null;
   }

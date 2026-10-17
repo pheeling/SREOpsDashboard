@@ -31,6 +31,8 @@ export interface Service {
   hasExpertise: boolean;
   /** Whether toil for this service has been automated away. */
   isAutomated: boolean;
+  /** Whether the service has passed its Production Readiness Review. */
+  prrApproved: boolean;
   /** Whether this service was added by the user (vs. a standard seeded service). */
   isCustom?: boolean;
   /**
