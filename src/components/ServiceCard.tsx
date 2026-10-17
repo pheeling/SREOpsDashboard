@@ -1,4 +1,4 @@
-import type { OwnershipModel, Service } from "../engine/types";
+import type { OwnershipModel, Service, SloStatus } from "../engine/types";
 import { OWNERSHIP_LABELS, getBaseHours, getOwnershipModel, getRequiredHours } from "../engine/calculations";
 
 interface ServiceCardProps {
@@ -8,6 +8,7 @@ interface ServiceCardProps {
   onToggleExpertise: (id: string) => void;
   onToggleAutomation: (id: string) => void;
   onTogglePrr: (id: string) => void;
+  onChangeSloStatus: (id: string, sloStatus: SloStatus) => void;
   onChangeWeight: (id: string, weight: number) => void;
   onChangeOwnership: (id: string, ownershipModel: OwnershipModel) => void;
   onDelete: (id: string) => void;
@@ -20,6 +21,7 @@ export function ServiceCard({
   onToggleExpertise,
   onToggleAutomation,
   onTogglePrr,
+  onChangeSloStatus,
   onChangeWeight,
   onChangeOwnership,
   onDelete,
@@ -30,7 +32,7 @@ export function ServiceCard({
 
   return (
     <div
-      className={`service-card ${service.isActive ? "service-card--active" : "service-card--inactive"}`}
+      className={`service-card ${service.isActive ? "service-card--active" : "service-card--inactive"} ${service.sloStatus === "exhausted" ? "service-card--slo-exhausted" : ""}`}
       data-testid={`service-card-${service.id}`}
     >
       <button
@@ -60,6 +62,18 @@ export function ServiceCard({
       <span className={`service-card__prr-badge ${service.prrApproved ? "service-card__prr-badge--approved" : "service-card__prr-badge--deficient"}`}>
         PRR {service.prrApproved ? "Approved" : "Deficient"}
       </span>
+      <label className={`service-card__slo-status service-card__slo-status--${service.sloStatus}`}>
+        SLO Status
+        <select
+          value={service.sloStatus}
+          onChange={(e) => onChangeSloStatus(service.id, e.target.value as SloStatus)}
+          aria-label={`${service.name} SLO Status`}
+        >
+          <option value="healthy">Healthy · ≥20% remaining</option>
+          <option value="warning">Warning · &lt;20% remaining</option>
+          <option value="exhausted">Exhausted · depleted/freeze active</option>
+        </select>
+      </label>
       {isTopToilContributor && (
         <p className="service-card__top-toil" data-testid={`top-toil-badge-${service.id}`}>
           Top Toil Contributor

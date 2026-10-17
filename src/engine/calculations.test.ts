@@ -38,6 +38,7 @@ function makeService(overrides: Partial<Service> = {}): Service {
     hasExpertise: true,
     isAutomated: false,
     prrApproved: true,
+    sloStatus: "healthy",
     ...overrides,
   };
 }
@@ -492,7 +493,7 @@ describe("Pareto toil ranking & stabilization sprint", () => {
 });
 
 describe("ownership model & handback", () => {
-  const base = { id: "x", name: "X", deployHours: 10, maintenanceHours: 10, isActive: true, hasExpertise: true, isAutomated: false, prrApproved: true };
+  const base = { id: "x", name: "X", deployHours: 10, maintenanceHours: 10, isActive: true, hasExpertise: true, isAutomated: false, prrApproved: true, sloStatus: "healthy" as const };
 
   it("scales required hours by ownership multiplier", () => {
     expect(getRequiredHours(base)).toBe(20);

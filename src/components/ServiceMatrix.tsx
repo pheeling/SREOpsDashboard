@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import type { OwnershipModel } from "../engine/types";
+import type { OwnershipModel, SloStatus } from "../engine/types";
 import { useDashboard } from "../state/DashboardContext";
 import { ServiceCard } from "./ServiceCard";
 import { getParetoToilRanking, getTotalRequiredHours } from "../engine/calculations";
@@ -13,6 +13,7 @@ export function ServiceMatrix() {
   const [name, setName] = useState("");
   const [deployHours, setDeployHours] = useState("1");
   const [maintenanceHours, setMaintenanceHours] = useState("1");
+  const [sloFilter, setSloFilter] = useState<"all" | "exhausted" | "at-risk">("all");
 
   const handleToggleActive = (serviceId: string) => dispatch({ type: "TOGGLE_ACTIVE", serviceId });
   const handleToggleExpertise = (serviceId: string) => dispatch({ type: "TOGGLE_EXPERTISE", serviceId });
@@ -20,6 +21,8 @@ export function ServiceMatrix() {
   const handleTogglePrr = (serviceId: string) => dispatch({ type: "TOGGLE_PRR_APPROVED", serviceId });
   const handleChangeWeight = (serviceId: string, weight: number) =>
     dispatch({ type: "UPDATE_SERVICE_WEIGHT", serviceId, weight });
+  const handleChangeSloStatus = (serviceId: string, sloStatus: SloStatus) =>
+    dispatch({ type: "SET_SLO_STATUS", serviceId, sloStatus });
 
   const handleChangeOwnership = (serviceId: string, ownershipModel: OwnershipModel) =>
     dispatch({ type: "SET_OWNERSHIP", serviceId, ownershipModel });
@@ -39,6 +42,13 @@ export function ServiceMatrix() {
       .map((entry) => entry.id),
   );
   const avgHoursPerService = activeCount > 0 ? totalRequiredHours / activeCount : 0;
+  const visibleServices = state.services.filter((service) => {
+    if (sloFilter === "all") return true;
+    if (!service.isActive) return false;
+    return sloFilter === "exhausted"
+      ? service.sloStatus === "exhausted"
+      : service.sloStatus === "warning" || service.sloStatus === "exhausted";
+  });
 
   const handleAddCustomService = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -127,6 +137,19 @@ export function ServiceMatrix() {
         </form>
       )}
 
+      <label className="service-matrix__slo-filter">
+        Filter by SLO Status
+        <select
+          value={sloFilter}
+          onChange={(e) => setSloFilter(e.target.value as typeof sloFilter)}
+          aria-label="Filter by SLO Status"
+        >
+          <option value="all">All</option>
+          <option value="exhausted">Exhausted</option>
+          <option value="at-risk">At Risk</option>
+        </select>
+      </label>
+
       <CriticalityToilQuadrant services={state.services} />
       <ParetoToilPanel />
 
@@ -143,22 +166,29 @@ export function ServiceMatrix() {
           </button>
         </div>
       ) : (
-        <div className="service-matrix__grid">
-          {state.services.map((service) => (
-            <ServiceCard
-              key={service.id}
-              service={service}
-              isTopToilContributor={topToilIds.has(service.id)}
-              onToggleActive={handleToggleActive}
-              onToggleExpertise={handleToggleExpertise}
-              onToggleAutomation={handleToggleAutomation}
-              onTogglePrr={handleTogglePrr}
-              onChangeWeight={handleChangeWeight}
-              onChangeOwnership={handleChangeOwnership}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
+        visibleServices.length === 0 ? (
+          <p className="service-matrix__filtered-empty" data-testid="services-filter-empty">
+            No active services match this SLO status.
+          </p>
+        ) : (
+          <div className="service-matrix__grid">
+            {visibleServices.map((service) => (
+              <ServiceCard
+                key={service.id}
+                service={service}
+                isTopToilContributor={topToilIds.has(service.id)}
+                onToggleActive={handleToggleActive}
+                onToggleExpertise={handleToggleExpertise}
+                onToggleAutomation={handleToggleAutomation}
+                onTogglePrr={handleTogglePrr}
+                onChangeSloStatus={handleChangeSloStatus}
+                onChangeWeight={handleChangeWeight}
+                onChangeOwnership={handleChangeOwnership}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+        )
       )}
     </section>
   );

@@ -28,11 +28,14 @@ export function CriticalityToilQuadrant({ services }: CriticalityToilQuadrantPro
             const highToil = getRequiredHours(service) > 5;
             return highCriticality === quadrant.highCriticality && highToil === quadrant.highToil;
           });
+          const hasReliabilityDeficit =
+            quadrant.key === "high-criticality-high-toil" &&
+            matches.some((service) => service.sloStatus === "exhausted");
 
           return (
             <section
               key={quadrant.key}
-              className={`criticality-quadrant__cell ${quadrant.key === "low-criticality-high-toil" ? "criticality-quadrant__cell--review" : ""}`}
+              className={`criticality-quadrant__cell ${quadrant.key === "low-criticality-high-toil" ? "criticality-quadrant__cell--review" : ""} ${hasReliabilityDeficit ? "criticality-quadrant__cell--reliability-deficit" : ""}`}
               aria-label={quadrant.title}
             >
               <h4>{quadrant.title}</h4>
@@ -41,10 +44,18 @@ export function CriticalityToilQuadrant({ services }: CriticalityToilQuadrantPro
                   Candidates for Deprecation, SaaS Replacement, or Immediate Dev Handback
                 </p>
               )}
+              {hasReliabilityDeficit && (
+                <p className="criticality-quadrant__reliability-warning" data-testid="critical-reliability-deficit">
+                  Critical Reliability Deficit: Feature Freeze Recommended
+                </p>
+              )}
               {matches.length > 0 ? (
                 <ul>
                   {matches.map((service) => (
-                    <li key={service.id}>
+                    <li
+                      key={service.id}
+                      className={hasReliabilityDeficit && service.sloStatus === "exhausted" ? "criticality-quadrant__service--exhausted" : ""}
+                    >
                       {service.name} <span>{getRequiredHours(service).toFixed(1)} hrs/wk</span>
                     </li>
                   ))}

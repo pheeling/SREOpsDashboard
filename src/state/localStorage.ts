@@ -15,6 +15,7 @@ export function loadState(): DashboardState | null {
       services: parsed.services.map((service: Service) => ({
         ...service,
         prrApproved: service.prrApproved !== false,
+        sloStatus: service.sloStatus ?? "healthy",
       })),
     } as DashboardState;
   } catch {

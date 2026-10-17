@@ -22,6 +22,8 @@ export interface GlobalConfig {
 
 export type OwnershipModel = "sre_full" | "shared" | "dev_owned";
 
+export type SloStatus = "healthy" | "warning" | "exhausted";
+
 export interface Service {
   id: string;
   name: string;
@@ -37,6 +39,8 @@ export interface Service {
   isAutomated: boolean;
   /** Whether the service has passed its Production Readiness Review. */
   prrApproved: boolean;
+  /** Current health of this service's SLO error budget. */
+  sloStatus: SloStatus;
   /** Whether this service was added by the user (vs. a standard seeded service). */
   isCustom?: boolean;
   /**
