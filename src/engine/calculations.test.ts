@@ -12,6 +12,9 @@ import {
   getBaseHours,
   getCapacityBuckets,
   getEffectiveAvailableHours,
+  getDeficitHours,
+  getEffectiveCapacityHours,
+  getHandbackCandidates,
   getHiringCost,
   getParetoToilRanking,
   simulateStabilizationSprint,
@@ -441,5 +444,23 @@ describe("Pareto toil ranking & stabilization sprint", () => {
 
   it("returns null when no active toil exists", () => {
     expect(simulateStabilizationSprint({ ...state, services: [] })).toBeNull();
+  });
+});
+
+describe("ownership model & handback", () => {
+  const base = { id: "x", name: "X", deployHours: 10, maintenanceHours: 10, isActive: true, hasExpertise: true, isAutomated: false };
+
+  it("scales required hours by ownership multiplier", () => {
+    expect(getRequiredHours(base)).toBe(20);
+    expect(getRequiredHours({ ...base, ownershipModel: "shared" })).toBe(10);
+    expect(getRequiredHours({ ...base, ownershipModel: "dev_owned" })).toBeCloseTo(2);
+  });
+
+  it("recommends the biggest handback candidates and computes deficit", () => {
+    const services = [base, { ...base, id: "y", name: "Y", deployHours: 40 }, { ...base, id: "z", ownershipModel: "dev_owned" as const }];
+    const candidates = getHandbackCandidates(services);
+    expect(candidates.map((c) => c.serviceId)).toEqual(["y", "x"]);
+    expect(getDeficitHours(60, 100)).toBe(10);
+    expect(getDeficitHours(40, 100)).toBe(0);
   });
 });
