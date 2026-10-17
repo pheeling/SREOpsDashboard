@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import type { OwnershipModel } from "../engine/types";
 import { useDashboard } from "../state/DashboardContext";
 import { ServiceCard } from "./ServiceCard";
 import { getTotalRequiredHours } from "../engine/calculations";
@@ -17,6 +18,8 @@ export function ServiceMatrix() {
   const handleChangeWeight = (serviceId: string, weight: number) =>
     dispatch({ type: "UPDATE_SERVICE_WEIGHT", serviceId, weight });
 
+  const handleChangeOwnership = (serviceId: string, ownershipModel: OwnershipModel) =>
+    dispatch({ type: "SET_OWNERSHIP", serviceId, ownershipModel });
   const handleDelete = (serviceId: string) => dispatch({ type: "DELETE_SERVICE", serviceId });
   const handleDeleteAll = () => {
     if (window.confirm("Delete all services from the catalog?")) {
@@ -138,6 +141,7 @@ export function ServiceMatrix() {
               onToggleExpertise={handleToggleExpertise}
               onToggleAutomation={handleToggleAutomation}
               onChangeWeight={handleChangeWeight}
+              onChangeOwnership={handleChangeOwnership}
               onDelete={handleDelete}
             />
           ))}
