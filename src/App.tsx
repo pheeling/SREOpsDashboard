@@ -3,6 +3,7 @@ import { DashboardProvider } from "./state/DashboardContext";
 import { GlobalConfigPanel } from "./components/GlobalConfigPanel";
 import { LoadGauge } from "./components/LoadGauge";
 import { HiringCostWidget } from "./components/HiringCostWidget";
+import { HandbackSimulator } from "./components/HandbackSimulator";
 import { ServiceMatrix } from "./components/ServiceMatrix";
 import { SummaryReport } from "./components/SummaryReport";
 import { CapacityBucketsChart } from "./components/CapacityBucketsChart";
@@ -33,6 +34,7 @@ function App() {
               <CapacityBucketsChart />
               <HiringCostWidget />
               <LoadGauge />
+              <HandbackSimulator />
               <ServiceMatrix />
             </div>
           </>

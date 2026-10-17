@@ -1,23 +1,27 @@
-import type { Service } from "../engine/types";
-import { getBaseHours, getRequiredHours } from "../engine/calculations";
+import type { OwnershipModel, Service } from "../engine/types";
+import { OWNERSHIP_LABELS, getBaseHours, getOwnershipModel, getRequiredHours } from "../engine/calculations";
 
 interface ServiceCardProps {
   service: Service;
+  isTopToilContributor?: boolean;
   onToggleActive: (id: string) => void;
   onToggleExpertise: (id: string) => void;
   onToggleAutomation: (id: string) => void;
   onTogglePrr: (id: string) => void;
   onChangeWeight: (id: string, weight: number) => void;
+  onChangeOwnership: (id: string, ownershipModel: OwnershipModel) => void;
   onDelete: (id: string) => void;
 }
 
 export function ServiceCard({
   service,
+  isTopToilContributor = false,
   onToggleActive,
   onToggleExpertise,
   onToggleAutomation,
   onTogglePrr,
   onChangeWeight,
+  onChangeOwnership,
   onDelete,
 }: ServiceCardProps) {
   const requiredHours = getRequiredHours(service);
@@ -56,6 +60,11 @@ export function ServiceCard({
       <span className={`service-card__prr-badge ${service.prrApproved ? "service-card__prr-badge--approved" : "service-card__prr-badge--deficient"}`}>
         PRR {service.prrApproved ? "Approved" : "Deficient"}
       </span>
+      {isTopToilContributor && (
+        <p className="service-card__top-toil" data-testid={`top-toil-badge-${service.id}`}>
+          Top Toil Contributor
+        </p>
+      )}
 
       {!service.isActive && <p className="service-card__muted-note">Inactive — 0 hrs contributed</p>}
 
@@ -92,6 +101,22 @@ export function ServiceCard({
           PRR Approved
         </label>
       </div>
+
+      <label className="service-card__weight">
+        Ownership
+        <select
+          value={getOwnershipModel(service)}
+          disabled={!service.isActive}
+          onChange={(e) => onChangeOwnership(service.id, e.target.value as OwnershipModel)}
+          aria-label={`${service.name} Ownership`}
+        >
+          {(Object.keys(OWNERSHIP_LABELS) as OwnershipModel[]).map((model) => (
+            <option key={model} value={model}>
+              {OWNERSHIP_LABELS[model]}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <label className="service-card__weight">
         Criticality Weight

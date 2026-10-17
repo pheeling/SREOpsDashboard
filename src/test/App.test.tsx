@@ -125,6 +125,26 @@ describe("App", () => {
     expect(within(quadrant).getByRole("region", { name: "High criticality · High toil" })).toHaveTextContent("Databases");
   });
 
+  it("updates the internal upskilling dividend when a service's expertise changes", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const card = screen.getByTestId("service-card-databases");
+    const expertiseToggle = within(card).getByLabelText("Databases Expertise");
+    expect(screen.queryByTestId("upskilling-hours")).not.toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Services with expertise gaps" })).not.toBeInTheDocument();
+
+    await user.click(expertiseToggle);
+
+    expect(screen.getByTestId("upskilling-hours")).toHaveTextContent(/\d+\.\d/);
+    expect(screen.getByRole("list", { name: "Services with expertise gaps" })).toHaveTextContent("Databases");
+
+    await user.click(expertiseToggle);
+
+    expect(screen.queryByRole("list", { name: "Services with expertise gaps" })).not.toBeInTheDocument();
+    expect(screen.getByText("No active services have an expertise gap to address.")).toBeInTheDocument();
+  });
+
   it("deactivating a service shows 0 hrs and mutes the card", async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -181,5 +201,28 @@ describe("App", () => {
 
     await user.click(screen.getByRole("button", { name: "Restore Default Services" }));
     expect(screen.getByText(/Services \(19\/19 active\)/)).toBeInTheDocument();
+  });
+});
+
+describe("Pareto toil & stabilization sprint", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("badges top 3 services and keeps the sprint in preview until applied", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(screen.getAllByText("Top Toil Contributor")).toHaveLength(3);
+    expect(screen.getByTestId("pareto-toil-summary")).toHaveTextContent(/Top 3 drivers account for/);
+
+    const before = screen.getByTestId("service-scaling-note").textContent;
+    await user.click(screen.getByTestId("model-stabilization-sprint"));
+    expect(screen.getByTestId("scenario-load")).toBeInTheDocument();
+    expect(screen.getByTestId("service-scaling-note").textContent).toBe(before);
+
+    await user.click(screen.getByTestId("apply-stabilization-sprint"));
+    expect(screen.getByTestId("service-scaling-note").textContent).not.toBe(before);
+    expect(screen.queryByTestId("stabilization-scenario")).not.toBeInTheDocument();
   });
 });

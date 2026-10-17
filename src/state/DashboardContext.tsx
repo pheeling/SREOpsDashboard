@@ -11,6 +11,7 @@ export const INITIAL_STATE: DashboardState = {
     fteCount: 5,
     weeklyHours: 40,
     capacityEfficiencyFactor: 0.8,
+    hasInterruptShield: false,
     annualSalary: DEFAULT_ANNUAL_SALARY,
   },
   services: cloneDefaultServices(),

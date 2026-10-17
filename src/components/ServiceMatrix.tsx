@@ -1,9 +1,11 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import type { OwnershipModel } from "../engine/types";
 import { useDashboard } from "../state/DashboardContext";
 import { ServiceCard } from "./ServiceCard";
-import { getTotalRequiredHours } from "../engine/calculations";
+import { getParetoToilRanking, getTotalRequiredHours } from "../engine/calculations";
 import { CriticalityToilQuadrant } from "./CriticalityToilQuadrant";
+import { ParetoToilPanel } from "./ParetoToilPanel";
 
 export function ServiceMatrix() {
   const { state, dispatch } = useDashboard();
@@ -19,6 +21,8 @@ export function ServiceMatrix() {
   const handleChangeWeight = (serviceId: string, weight: number) =>
     dispatch({ type: "UPDATE_SERVICE_WEIGHT", serviceId, weight });
 
+  const handleChangeOwnership = (serviceId: string, ownershipModel: OwnershipModel) =>
+    dispatch({ type: "SET_OWNERSHIP", serviceId, ownershipModel });
   const handleDelete = (serviceId: string) => dispatch({ type: "DELETE_SERVICE", serviceId });
   const handleDeleteAll = () => {
     if (window.confirm("Delete all services from the catalog?")) {
@@ -29,6 +33,11 @@ export function ServiceMatrix() {
 
   const activeCount = state.services.filter((s) => s.isActive).length;
   const totalRequiredHours = getTotalRequiredHours(state.services);
+  const topToilIds = new Set(
+    getParetoToilRanking(state.services)
+      .entries.filter((entry) => entry.isTopContributor)
+      .map((entry) => entry.id),
+  );
   const avgHoursPerService = activeCount > 0 ? totalRequiredHours / activeCount : 0;
 
   const handleAddCustomService = (event: FormEvent<HTMLFormElement>) => {
@@ -119,6 +128,7 @@ export function ServiceMatrix() {
       )}
 
       <CriticalityToilQuadrant services={state.services} />
+      <ParetoToilPanel />
 
       {state.services.length === 0 ? (
         <div className="service-matrix__empty" data-testid="services-empty-state">
@@ -138,11 +148,13 @@ export function ServiceMatrix() {
             <ServiceCard
               key={service.id}
               service={service}
+              isTopToilContributor={topToilIds.has(service.id)}
               onToggleActive={handleToggleActive}
               onToggleExpertise={handleToggleExpertise}
               onToggleAutomation={handleToggleAutomation}
               onTogglePrr={handleTogglePrr}
               onChangeWeight={handleChangeWeight}
+              onChangeOwnership={handleChangeOwnership}
               onDelete={handleDelete}
             />
           ))}

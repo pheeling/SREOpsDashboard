@@ -127,8 +127,23 @@
 }
 
 /* --- Hiring Cost Widget --- */
+.hiring-cost-widget__comparison {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 1rem;
+}
+
+.hiring-cost-widget__comparison h3 {
+  margin-bottom: 0.5rem;
+}
+
 .hiring-cost-widget__amount {
   font-size: 1.1rem;
+}
+
+.hiring-cost-widget__services {
+  margin: 0;
+  padding-left: 1.25rem;
 }
 
 /* --- Capacity Buckets Chart --- */
@@ -506,4 +521,57 @@
   color: #fff;
   font-weight: 600;
   cursor: pointer;
+}
+
+.service-card__top-toil {
+  display: inline-block;
+  margin: 0.25rem 0 0;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: #c53030;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.pareto-toil {
+  margin-bottom: 1rem;
+}
+
+.pareto-toil__list {
+
+/* --- Handback Simulator --- */
+.handback-simulator {
+  border-color: #c53030;
+}
+
+.handback-simulator__list {
+  list-style: none;
+  padding: 0;
+}
+
+.pareto-toil__list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.pareto-toil__bar {
+  flex-basis: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #dd6b20;
+}
+
+.pareto-toil__scenario {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border: 1px dashed #a0aec0;
+  border-radius: 6px;
+
+.handback-simulator__list li {
+  margin-bottom: 0.5rem;
 }

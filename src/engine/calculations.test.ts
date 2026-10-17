@@ -8,12 +8,18 @@ import {
   ON_CALL_MONITORING_SHARE,
   PRR_FRICTION_MULTIPLIER,
   SECURITY_COMPLIANCE_SHARE,
+  calculateUpskillingDividend,
   computeCapacityReport,
   getAutomationRoiHours,
   getBaseHours,
   getCapacityBuckets,
   getEffectiveAvailableHours,
+  getDeficitHours,
+  getEffectiveCapacityHours,
+  getHandbackCandidates,
   getHiringCost,
+  getParetoToilRanking,
+  simulateStabilizationSprint,
   getRequiredHours,
   getServiceWeight,
   getTotalAvailableHours,
@@ -251,6 +257,38 @@ describe("getHiringCost", () => {
   });
 });
 
+describe("calculateUpskillingDividend", () => {
+  const globalConfig = { fteCount: 5, weeklyHours: 40, annualSalary: 150000 };
+
+  it("aggregates the 1.25x penalty for active services without expertise", () => {
+    const services = [
+      makeService({ name: "Databases", deployHours: 10, maintenanceHours: 0, hasExpertise: false }),
+      makeService({ name: "Networking", deployHours: 20, maintenanceHours: 0, hasExpertise: false, weight: 2 }),
+      makeService({ name: "Known Service", deployHours: 30, maintenanceHours: 0 }),
+      makeService({ name: "Inactive Service", deployHours: 40, maintenanceHours: 0, hasExpertise: false, isActive: false }),
+    ];
+
+    expect(calculateUpskillingDividend(services, globalConfig)).toEqual({
+      hoursRecoveredPerWeek: 12.5,
+      annualizedValue: 46875,
+      affectedServices: ["Databases", "Networking"],
+    });
+  });
+
+  it("accounts for automation and returns no annual value when weekly hours are invalid", () => {
+    const automatedService = makeService({
+      name: "Automated Service",
+      deployHours: 10,
+      maintenanceHours: 0,
+      hasExpertise: false,
+      isAutomated: true,
+    });
+
+    expect(calculateUpskillingDividend([automatedService], globalConfig).hoursRecoveredPerWeek).toBeCloseTo(5 / 6);
+    expect(calculateUpskillingDividend([automatedService], { ...globalConfig, weeklyHours: 0 }).annualizedValue).toBe(0);
+  });
+});
+
 describe("getAutomationRoiHours", () => {
   it("reports the weekly hours saved by automating a service", () => {
     const service = makeService({ deployHours: 5, maintenanceHours: 4, hasExpertise: true, isAutomated: false });
@@ -414,5 +452,80 @@ describe("Toil Elimination Audit", () => {
       const automatedTotal = getTotalRequiredHours(services.map((s) => ({ ...s, isAutomated: true })));
       expect(automatedTotal).toBeCloseTo(manualTotal / AUTOMATION_REDUCTION_FACTOR);
     }
+  });
+});
+
+describe("Pareto toil ranking & stabilization sprint", () => {
+  const services = [
+    makeService({ id: "a", deployHours: 0, maintenanceHours: 6 }),
+    makeService({ id: "b", deployHours: 0, maintenanceHours: 2 }),
+    makeService({ id: "c", deployHours: 0, maintenanceHours: 1 }),
+    makeService({ id: "d", deployHours: 0, maintenanceHours: 1 }),
+    makeService({ id: "off", deployHours: 0, maintenanceHours: 50, isActive: false }),
+  ];
+  const state: DashboardState = {
+    globalConfig: { fteCount: 4, weeklyHours: 40, annualSalary: 150_000 },
+    services,
+  };
+
+  it("ranks active services and flags the top 3", () => {
+    const p = getParetoToilRanking(services);
+    expect(p.entries.map((e) => e.id)).toEqual(["a", "b", "c", "d"]);
+    expect(p.entries[0].share).toBeCloseTo(0.6);
+    expect(p.topShare).toBeCloseTo(0.9);
+    expect(p.entries.filter((e) => e.isTopContributor)).toHaveLength(3);
+    expect(p.entries[3].cumulativeShare).toBeCloseTo(1);
+  });
+
+  it("simulates halving the top service without mutating state", () => {
+    const s = simulateStabilizationSprint(state)!;
+    expect(s.serviceId).toBe("a");
+    expect(s.hoursSavedPerWeek).toBeCloseTo(3);
+    expect(s.after.buckets.maintenance).toBeCloseTo(s.before.buckets.maintenance - 3);
+    expect(s.after.operationalLoadRatio).toBeLessThan(s.before.operationalLoadRatio);
+    expect(state.services[0].maintenanceHours).toBe(6);
+  });
+
+  it("returns null when no active toil exists", () => {
+    expect(simulateStabilizationSprint({ ...state, services: [] })).toBeNull();
+  });
+});
+
+describe("ownership model & handback", () => {
+  const base = { id: "x", name: "X", deployHours: 10, maintenanceHours: 10, isActive: true, hasExpertise: true, isAutomated: false, prrApproved: true };
+
+  it("scales required hours by ownership multiplier", () => {
+    expect(getRequiredHours(base)).toBe(20);
+    expect(getRequiredHours({ ...base, ownershipModel: "shared" })).toBe(10);
+    expect(getRequiredHours({ ...base, ownershipModel: "dev_owned" })).toBeCloseTo(2);
+  });
+
+  it("recommends the biggest handback candidates and computes deficit", () => {
+    const services = [base, { ...base, id: "y", name: "Y", deployHours: 40 }, { ...base, id: "z", ownershipModel: "dev_owned" as const }];
+    const candidates = getHandbackCandidates(services);
+    expect(candidates.map((c) => c.serviceId)).toEqual(["y", "x"]);
+    expect(getDeficitHours(60, 100)).toBe(10);
+    expect(getDeficitHours(40, 100)).toBe(0);
+  });
+});
+
+describe("interrupt shield", () => {
+  const base = (hasInterruptShield: boolean): DashboardState => ({
+    globalConfig: { fteCount: 5, weeklyHours: 40, annualSalary: 150_000, hasInterruptShield },
+    services: [],
+  });
+
+  it("applies a 20% context-switching drag when disabled", () => {
+    const raw = computeCapacityReport(base(true)).buckets.innovation;
+    const report = computeCapacityReport(base(false));
+    expect(report.buckets.innovation).toBeCloseTo(raw * 0.8);
+    expect(report.cognitiveOverheadHours).toBeCloseTo(raw * 0.2);
+    expect(report.recoveredInnovationHours).toBe(0);
+  });
+
+  it("removes cognitive overhead and reports recovered hours when enabled", () => {
+    const report = computeCapacityReport(base(true));
+    expect(report.cognitiveOverheadHours).toBe(0);
+    expect(report.recoveredInnovationHours).toBeCloseTo(report.buckets.innovation * 0.2);
   });
 });
