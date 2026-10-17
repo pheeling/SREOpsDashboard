@@ -16,6 +16,8 @@ export interface GlobalConfig {
   capacityEfficiencyFactor?: number;
   /** Market rate baseline used for hiring-cost projections ($/year/FTE). */
   annualSalary: number;
+  /** Dedicate 1 FTE to interrupts so the other N-1 engineers are shielded (defaults to false). */
+  hasInterruptShield?: boolean;
 }
 
 export type OwnershipModel = "sre_full" | "shared" | "dev_owned";
