@@ -103,6 +103,10 @@ export interface CapacityReport {
   isRedZone: boolean;
   /** Fractional-FTE hiring cost required to close the Required/Available gap. */
   hiringCost: number;
+  /** Innovation hours lost to context switching (0 when the interrupt shield is enabled). */
+  cognitiveOverheadHours: number;
+  /** Innovation hours recovered by enabling the interrupt shield (0 when disabled). */
+  recoveredInnovationHours: number;
   /** Toil hours to shed to reach the 50% threshold (0 when not in the Red Zone). */
   deficitHours: number;
 }

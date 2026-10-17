@@ -426,3 +426,24 @@ describe("ownership model & handback", () => {
     expect(getDeficitHours(40, 100)).toBe(0);
   });
 });
+
+describe("interrupt shield", () => {
+  const base = (hasInterruptShield: boolean): DashboardState => ({
+    globalConfig: { fteCount: 5, weeklyHours: 40, annualSalary: 150_000, hasInterruptShield },
+    services: [],
+  });
+
+  it("applies a 20% context-switching drag when disabled", () => {
+    const raw = computeCapacityReport(base(true)).buckets.innovation;
+    const report = computeCapacityReport(base(false));
+    expect(report.buckets.innovation).toBeCloseTo(raw * 0.8);
+    expect(report.cognitiveOverheadHours).toBeCloseTo(raw * 0.2);
+    expect(report.recoveredInnovationHours).toBe(0);
+  });
+
+  it("removes cognitive overhead and reports recovered hours when enabled", () => {
+    const report = computeCapacityReport(base(true));
+    expect(report.cognitiveOverheadHours).toBe(0);
+    expect(report.recoveredInnovationHours).toBeCloseTo(report.buckets.innovation * 0.2);
+  });
+});

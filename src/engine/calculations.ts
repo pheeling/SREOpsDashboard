@@ -35,6 +35,8 @@ export const SECURITY_COMPLIANCE_SHARE = 0.08;
 
 /** Fixed share of effective capacity reserved for on-call rotations, alert triage and SLO/monitoring upkeep. */
 export const ON_CALL_MONITORING_SHARE = 0.07;
+/** Share of innovation hours lost to context switching without a dedicated interrupt shield. */
+export const CONTEXT_SWITCH_DRAG = 0.2;
 
 /** Default criticality/"blast-radius" weight applied to a service when none is specified. */
 export const DEFAULT_SERVICE_WEIGHT = 1;
