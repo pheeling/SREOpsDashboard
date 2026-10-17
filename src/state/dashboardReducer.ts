@@ -1,4 +1,4 @@
-import type { DashboardState, GlobalConfig, Service } from "../engine/types";
+import type { DashboardState, GlobalConfig, OwnershipModel, Service } from "../engine/types";
 import { cloneDefaultServices } from "../engine/seedServices";
 
 export interface NewCustomService {
@@ -12,6 +12,7 @@ export type DashboardAction =
   | { type: "TOGGLE_EXPERTISE"; serviceId: string }
   | { type: "TOGGLE_AUTOMATION"; serviceId: string }
   | { type: "UPDATE_SERVICE_WEIGHT"; serviceId: string; weight: number }
+  | { type: "SET_OWNERSHIP"; serviceId: string; ownershipModel: OwnershipModel }
   | { type: "ADD_CUSTOM_SERVICE"; payload: NewCustomService }
   | { type: "DELETE_SERVICE"; serviceId: string }
   | { type: "DELETE_ALL_SERVICES" }
@@ -57,6 +58,13 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
         ),
       };
     }
+    case "SET_OWNERSHIP":
+      return {
+        ...state,
+        services: state.services.map((service) =>
+          service.id === action.serviceId ? { ...service, ownershipModel: action.ownershipModel } : service,
+        ),
+      };
     case "ADD_CUSTOM_SERVICE": {
       const { name, deployHours, maintenanceHours } = action.payload;
       const baseSlug = slugify(name) || "custom_service";

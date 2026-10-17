@@ -18,6 +18,8 @@ export interface GlobalConfig {
   annualSalary: number;
 }
 
+export type OwnershipModel = "sre_full" | "shared" | "dev_owned";
+
 export interface Service {
   id: string;
   name: string;
@@ -41,6 +43,8 @@ export interface Service {
    * there costs the operations team disproportionately more effort.
    */
   weight?: number;
+  /** Who carries the pager/toil for this service; defaults to `sre_full`. */
+  ownershipModel?: OwnershipModel;
 }
 
 export interface DashboardState {
@@ -72,6 +76,8 @@ export interface ServiceBreakdown {
   hasExpertise: boolean;
   /** Criticality multiplier applied to required hours (see `Service.weight`). */
   weight: number;
+  /** Ownership model applied to required hours (see `Service.ownershipModel`). */
+  ownershipModel: OwnershipModel;
   /** Raw Base Hours = Deploy Hours + Maintenance Hours (before automation). */
   baseHours: number;
   /** Hours required after the automation divisor and weight are applied (0 when inactive). */
@@ -95,4 +101,6 @@ export interface CapacityReport {
   isRedZone: boolean;
   /** Fractional-FTE hiring cost required to close the Required/Available gap. */
   hiringCost: number;
+  /** Toil hours to shed to reach the 50% threshold (0 when not in the Red Zone). */
+  deficitHours: number;
 }
