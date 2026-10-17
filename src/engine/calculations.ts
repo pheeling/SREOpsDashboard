@@ -216,3 +216,106 @@ export function getAutomationRoiDollars(service: Service, globalConfig: GlobalCo
   const weeklyHours = finiteNumber(globalConfig.weeklyHours);
   return weeklyHours > 0 ? (hoursSavedPerWeek / weeklyHours) * finiteNumber(globalConfig.annualSalary) : 0;
 }
+
+/** Share of a service's base hours eliminated by a stabilization sprint. */
+export const STABILIZATION_SPRINT_REDUCTION = 0.5;
+
+/** Duration of a stabilization sprint, in weeks, with 1 FTE dedicated. */
+export const STABILIZATION_SPRINT_WEEKS = 2;
+
+/** Number of services flagged as "Top Toil Contributors". */
+export const TOP_TOIL_CONTRIBUTOR_COUNT = 3;
+
+export interface ParetoToilEntry {
+  id: string;
+  name: string;
+  /** 1-based rank by required hours (descending). */
+  rank: number;
+  requiredHours: number;
+  /** Share of total active toil, 0..1. */
+  share: number;
+  /** Running share including this service, 0..1. */
+  cumulativeShare: number;
+  isTopContributor: boolean;
+}
+
+export interface ParetoToilSummary {
+  entries: ParetoToilEntry[];
+  totalHours: number;
+  topCount: number;
+  /** Combined share (0..1) of the top contributors. */
+  topShare: number;
+}
+
+/** Ranks active services by their contribution to total operational toil. */
+export function getParetoToilRanking(services: Service[]): ParetoToilSummary {
+  const active = services
+    .filter((service) => service.isActive)
+    .map((service) => ({ service, hours: getRequiredHours(service) }))
+    .filter(({ hours }) => hours > 0)
+    .sort((a, b) => b.hours - a.hours);
+  const totalHours = active.reduce((sum, { hours }) => sum + hours, 0);
+  let cumulative = 0;
+  const entries = active.map(({ service, hours }, index): ParetoToilEntry => {
+    const share = totalHours > 0 ? hours / totalHours : 0;
+    cumulative += share;
+    return {
+      id: service.id,
+      name: service.name,
+      rank: index + 1,
+      requiredHours: hours,
+      share,
+      cumulativeShare: Math.min(1, cumulative),
+      isTopContributor: index < TOP_TOIL_CONTRIBUTOR_COUNT,
+    };
+  });
+  const topCount = Math.min(TOP_TOIL_CONTRIBUTOR_COUNT, entries.length);
+  const topShare = entries.slice(0, topCount).reduce((sum, entry) => sum + entry.share, 0);
+  return { entries, totalHours, topCount, topShare };
+}
+
+/** Returns state with the service's base (deploy + maintenance) hours cut by the sprint reduction. */
+export function applyStabilizationSprint(state: DashboardState, serviceId: string): DashboardState {
+  const keep = 1 - STABILIZATION_SPRINT_REDUCTION;
+  return {
+    ...state,
+    services: state.services.map((service) =>
+      service.id === serviceId
+        ? {
+            ...service,
+            deployHours: finiteNumber(service.deployHours) * keep,
+            maintenanceHours: finiteNumber(service.maintenanceHours) * keep,
+          }
+        : service,
+    ),
+  };
+}
+
+export interface StabilizationSprintScenario {
+  serviceId: string;
+  serviceName: string;
+  /** Hours dedicated to the sprint: 1 FTE x weeklyHours x sprint weeks. */
+  sprintHours: number;
+  hoursSavedPerWeek: number;
+  before: CapacityReport;
+  after: CapacityReport;
+}
+
+/**
+ * Pure what-if simulation: halves the #1 toil contributor's base hours and
+ * reports the capacity picture before and after. Never mutates the input.
+ */
+export function simulateStabilizationSprint(state: DashboardState): StabilizationSprintScenario | null {
+  const [top] = getParetoToilRanking(state.services).entries;
+  if (!top) return null;
+  const before = computeCapacityReport(state);
+  const after = computeCapacityReport(applyStabilizationSprint(state, top.id));
+  return {
+    serviceId: top.id,
+    serviceName: top.name,
+    sprintHours: finiteNumber(state.globalConfig.weeklyHours) * STABILIZATION_SPRINT_WEEKS,
+    hoursSavedPerWeek: before.totalRequiredHours - after.totalRequiredHours,
+    before,
+    after,
+  };
+}

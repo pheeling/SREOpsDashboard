@@ -3,6 +3,7 @@ import { getBaseHours, getRequiredHours } from "../engine/calculations";
 
 interface ServiceCardProps {
   service: Service;
+  isTopToilContributor?: boolean;
   onToggleActive: (id: string) => void;
   onToggleExpertise: (id: string) => void;
   onToggleAutomation: (id: string) => void;
@@ -12,6 +13,7 @@ interface ServiceCardProps {
 
 export function ServiceCard({
   service,
+  isTopToilContributor = false,
   onToggleActive,
   onToggleExpertise,
   onToggleAutomation,
@@ -50,6 +52,12 @@ export function ServiceCard({
           {service.isActive ? requiredHours.toFixed(2) : "0.00"} hrs/wk
         </span>
       </div>
+
+      {isTopToilContributor && (
+        <p className="service-card__top-toil" data-testid={`top-toil-badge-${service.id}`}>
+          Top Toil Contributor
+        </p>
+      )}
 
       {!service.isActive && <p className="service-card__muted-note">Inactive — 0 hrs contributed</p>}
 
