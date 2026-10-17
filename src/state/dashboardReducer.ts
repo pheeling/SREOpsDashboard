@@ -1,4 +1,4 @@
-import type { DashboardState, GlobalConfig, OwnershipModel, Service } from "../engine/types";
+import type { DashboardState, GlobalConfig, OwnershipModel, Service, SloStatus } from "../engine/types";
 import { cloneDefaultServices } from "../engine/seedServices";
 import { applyStabilizationSprint } from "../engine/calculations";
 
@@ -13,6 +13,7 @@ export type DashboardAction =
   | { type: "TOGGLE_EXPERTISE"; serviceId: string }
   | { type: "TOGGLE_AUTOMATION"; serviceId: string }
   | { type: "TOGGLE_PRR_APPROVED"; serviceId: string }
+  | { type: "SET_SLO_STATUS"; serviceId: string; sloStatus: SloStatus }
   | { type: "UPDATE_SERVICE_WEIGHT"; serviceId: string; weight: number }
   | { type: "APPLY_STABILIZATION_SPRINT"; serviceId: string }
   | { type: "SET_OWNERSHIP"; serviceId: string; ownershipModel: OwnershipModel }
@@ -54,6 +55,13 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
       return toggleServiceField(state, action.serviceId, "isAutomated");
     case "TOGGLE_PRR_APPROVED":
       return toggleServiceField(state, action.serviceId, "prrApproved");
+    case "SET_SLO_STATUS":
+      return {
+        ...state,
+        services: state.services.map((service) =>
+          service.id === action.serviceId ? { ...service, sloStatus: action.sloStatus } : service,
+        ),
+      };
     case "UPDATE_SERVICE_WEIGHT": {
       const safeWeight = Number.isFinite(action.weight) && action.weight > 0 ? action.weight : 1;
       return {
@@ -90,6 +98,7 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
         hasExpertise: true,
         isAutomated: false,
         prrApproved: true,
+        sloStatus: "healthy",
         isCustom: true,
       };
       return { ...state, services: [...state.services, newService] };

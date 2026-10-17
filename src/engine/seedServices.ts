@@ -27,7 +27,7 @@ export const DEFAULT_SERVICES: readonly Readonly<Service>[] = Object.freeze([
   { id: "antivirus", name: "Antivirus", deployHours: 20, maintenanceHours: 8, isActive: true, hasExpertise: true, isAutomated: false, prrApproved: true },
   { id: "vulnerability_management", name: "Vulnerability Management", deployHours: 40, maintenanceHours: 25, isActive: true, hasExpertise: true, isAutomated: false, prrApproved: true },
   { id: "databases", name: "Databases", deployHours: 80, maintenanceHours: 40, isActive: true, hasExpertise: true, isAutomated: false, prrApproved: true, weight: 2 },
-].map((service) => Object.freeze(service)));
+].map((service) => Object.freeze({ ...service, sloStatus: "healthy" as const })));
 
 /** Returns fresh deep copies of the default services so callers can never mutate the baseline. */
 export function cloneDefaultServices(): Service[] {
