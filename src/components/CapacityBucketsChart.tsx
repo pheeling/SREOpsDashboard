@@ -56,6 +56,16 @@ export function CapacityBucketsChart() {
           </li>
         ))}
       </ul>
+      {report.recoveredInnovationHours > 0 ? (
+        <p className="capacity-chart__shield" data-testid="recovered-hours">
+          Interrupt shield recovers {report.recoveredInnovationHours.toFixed(1)} engineering hrs of context-switching
+          overhead.
+        </p>
+      ) : (
+        <p className="capacity-chart__overhead" data-testid="cognitive-overhead">
+          Lost cognitive overhead (context switching): {report.cognitiveOverheadHours.toFixed(1)} hrs
+        </p>
+      )}
     </section>
   );
 }

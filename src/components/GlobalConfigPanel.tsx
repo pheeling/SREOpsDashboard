@@ -56,6 +56,18 @@ export function GlobalConfigPanel() {
           }
         />
       </label>
+      <label
+        title="Google SRE Chapter 29 (Time Polarization): dedicate one engineer to interrupts so the rest can work uninterrupted."
+      >
+        <input
+          type="checkbox"
+          checked={Boolean(globalConfig.hasInterruptShield)}
+          onChange={(e) =>
+            dispatch({ type: "UPDATE_GLOBAL_CONFIG", payload: { hasInterruptShield: e.target.checked } })
+          }
+        />{" "}
+        Dedicated Interrupt Shield (1 Primary On-Call, N-1 Builders)
+      </label>
     </section>
   );
 }
