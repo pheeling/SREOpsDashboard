@@ -127,8 +127,23 @@
 }
 
 /* --- Hiring Cost Widget --- */
+.hiring-cost-widget__comparison {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 1rem;
+}
+
+.hiring-cost-widget__comparison h3 {
+  margin-bottom: 0.5rem;
+}
+
 .hiring-cost-widget__amount {
   font-size: 1.1rem;
+}
+
+.hiring-cost-widget__services {
+  margin: 0;
+  padding-left: 1.25rem;
 }
 
 /* --- Capacity Buckets Chart --- */

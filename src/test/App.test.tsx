@@ -75,6 +75,26 @@ describe("App", () => {
     expect(after).toBeCloseTo(before * 1.25);
   });
 
+  it("updates the internal upskilling dividend when a service's expertise changes", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const card = screen.getByTestId("service-card-databases");
+    const expertiseToggle = within(card).getByLabelText("Databases Expertise");
+    expect(screen.queryByTestId("upskilling-hours")).not.toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Services with expertise gaps" })).not.toBeInTheDocument();
+
+    await user.click(expertiseToggle);
+
+    expect(screen.getByTestId("upskilling-hours")).toHaveTextContent(/\d+\.\d/);
+    expect(screen.getByRole("list", { name: "Services with expertise gaps" })).toHaveTextContent("Databases");
+
+    await user.click(expertiseToggle);
+
+    expect(screen.queryByRole("list", { name: "Services with expertise gaps" })).not.toBeInTheDocument();
+    expect(screen.getByText("No active services have an expertise gap to address.")).toBeInTheDocument();
+  });
+
   it("deactivating a service shows 0 hrs and mutes the card", async () => {
     const user = userEvent.setup();
     render(<App />);

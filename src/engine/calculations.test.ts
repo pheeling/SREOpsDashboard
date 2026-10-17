@@ -7,6 +7,7 @@ import {
   EXPERTISE_EFFORT_MULTIPLIER,
   ON_CALL_MONITORING_SHARE,
   SECURITY_COMPLIANCE_SHARE,
+  calculateUpskillingDividend,
   computeCapacityReport,
   getAutomationRoiHours,
   getBaseHours,
@@ -237,6 +238,38 @@ describe("getHiringCost", () => {
   it("returns a finite value when weekly hours are zero or invalid", () => {
     expect(getHiringCost(240, 200, { ...globalConfig, weeklyHours: 0 })).toBe(0);
     expect(getHiringCost(Number.NaN, Number.NaN, { ...globalConfig, weeklyHours: Number.NaN })).toBe(0);
+  });
+});
+
+describe("calculateUpskillingDividend", () => {
+  const globalConfig = { fteCount: 5, weeklyHours: 40, annualSalary: 150000 };
+
+  it("aggregates the 1.25x penalty for active services without expertise", () => {
+    const services = [
+      makeService({ name: "Databases", deployHours: 10, maintenanceHours: 0, hasExpertise: false }),
+      makeService({ name: "Networking", deployHours: 20, maintenanceHours: 0, hasExpertise: false, weight: 2 }),
+      makeService({ name: "Known Service", deployHours: 30, maintenanceHours: 0 }),
+      makeService({ name: "Inactive Service", deployHours: 40, maintenanceHours: 0, hasExpertise: false, isActive: false }),
+    ];
+
+    expect(calculateUpskillingDividend(services, globalConfig)).toEqual({
+      hoursRecoveredPerWeek: 12.5,
+      annualizedValue: 46875,
+      affectedServices: ["Databases", "Networking"],
+    });
+  });
+
+  it("accounts for automation and returns no annual value when weekly hours are invalid", () => {
+    const automatedService = makeService({
+      name: "Automated Service",
+      deployHours: 10,
+      maintenanceHours: 0,
+      hasExpertise: false,
+      isAutomated: true,
+    });
+
+    expect(calculateUpskillingDividend([automatedService], globalConfig).hoursRecoveredPerWeek).toBeCloseTo(5 / 6);
+    expect(calculateUpskillingDividend([automatedService], { ...globalConfig, weeklyHours: 0 }).annualizedValue).toBe(0);
   });
 });
 
