@@ -90,6 +90,61 @@ describe("App", () => {
     expect(within(card).getByText("256.00 hrs/wk")).toBeInTheDocument();
   });
 
+  it("updates SLO status and prioritizes exhausted high-criticality, high-toil services", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const card = screen.getByTestId("service-card-databases");
+    await user.selectOptions(within(card).getByLabelText("Databases SLO Status"), "exhausted");
+
+    expect(card).toHaveClass("service-card--slo-exhausted");
+    const highCriticalityHighToil = within(screen.getByTestId("criticality-quadrant")).getByRole("region", {
+      name: "High criticality · High toil",
+    });
+    expect(within(highCriticalityHighToil).getByTestId("critical-reliability-deficit")).toHaveTextContent(
+      "Critical Reliability Deficit: Feature Freeze Recommended",
+    );
+    expect(within(highCriticalityHighToil).getByText("Databases").closest("li")).toHaveClass(
+      "criticality-quadrant__service--exhausted",
+    );
+    expect(
+      JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "{}").services.find(
+        (service: { id: string }) => service.id === "databases",
+      ).sloStatus,
+    ).toBe("exhausted");
+  });
+
+  it("filters active services by exhausted and at-risk SLO statuses", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.selectOptions(screen.getByLabelText("Databases SLO Status"), "exhausted");
+    await user.selectOptions(screen.getByLabelText("Firewall SLO Status"), "warning");
+    const filter = screen.getByLabelText("Filter by SLO Status");
+
+    await user.selectOptions(filter, "exhausted");
+    expect(screen.getByTestId("service-card-databases")).toBeInTheDocument();
+    expect(screen.queryByTestId("service-card-firewall")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("service-card-printing")).not.toBeInTheDocument();
+
+    await user.selectOptions(filter, "at-risk");
+    expect(screen.getByTestId("service-card-databases")).toBeInTheDocument();
+    expect(screen.getByTestId("service-card-firewall")).toBeInTheDocument();
+    expect(screen.queryByTestId("service-card-printing")).not.toBeInTheDocument();
+  });
+
+  it("shows SLO health in the Automation ROI Summary Report", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.selectOptions(screen.getByLabelText("Databases SLO Status"), "warning");
+    await user.click(screen.getByTestId("toggle-summary-report"));
+
+    expect(screen.getByRole("columnheader", { name: "SLO Status" })).toBeInTheDocument();
+    const databaseRow = screen.getByRole("row", { name: /Databases/ });
+    expect(within(databaseRow).getByText("Warning")).toHaveClass("slo-status-badge--warning");
+  });
+
   it("treats services in older saved dashboards as PRR approved", () => {
     window.localStorage.setItem(
       STORAGE_KEY,
@@ -113,6 +168,7 @@ describe("App", () => {
     const card = screen.getByTestId("service-card-legacy");
     expect(within(card).getByLabelText("Legacy Service PRR Approved")).toBeChecked();
     expect(card.querySelector(".service-card__prr-badge")).toHaveTextContent("PRR Approved");
+    expect(within(card).getByLabelText("Legacy Service SLO Status")).toHaveValue("healthy");
   });
 
   it("maps active services into the criticality/toil quadrants and flags low-criticality high-toil work", () => {

@@ -32,6 +32,7 @@ export function SummaryReport() {
         <thead>
           <tr>
             <th>Service</th>
+            <th>SLO Status</th>
             <th>Hours Saved/wk</th>
             <th>Annualized Savings</th>
           </tr>
@@ -40,6 +41,11 @@ export function SummaryReport() {
           {manualServices.map((service) => (
             <tr key={service.id}>
               <td>{service.name}</td>
+              <td>
+                <span className={`slo-status-badge slo-status-badge--${service.sloStatus}`}>
+                  {service.sloStatus.charAt(0).toUpperCase() + service.sloStatus.slice(1)}
+                </span>
+              </td>
               <td>{getAutomationRoiHours(service).toFixed(2)}</td>
               <td>{currencyFormatter.format(getAutomationRoiDollars(service, globalConfig))}</td>
             </tr>

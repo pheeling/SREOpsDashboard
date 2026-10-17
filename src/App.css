@@ -260,6 +260,14 @@
   margin-top: 1rem;
 }
 
+.service-matrix__slo-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+}
+
 .criticality-quadrant {
   margin-top: 1rem;
   padding: 0.85rem;
@@ -303,6 +311,18 @@
   background: #fffaf0;
 }
 
+.criticality-quadrant__cell--reliability-deficit {
+  border-color: #c53030;
+  background: #fff5f5;
+}
+
+.criticality-quadrant__reliability-warning {
+  margin: 0.35rem 0;
+  color: #822727;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 .criticality-quadrant__advisory {
   margin-top: 0.35rem;
   color: #7b341e;
@@ -323,6 +343,14 @@
   justify-content: space-between;
   gap: 0.4rem;
   font-size: 0.75rem;
+}
+
+.criticality-quadrant__service--exhausted {
+  padding: 0.2rem 0.35rem;
+  border-radius: 0.3rem;
+  background: #ffebe9;
+  color: #822727;
+  font-weight: 700;
 }
 
 .criticality-quadrant__cell li span,
@@ -360,6 +388,12 @@
   background: #f6f8fa;
   opacity: 0.5;
   filter: grayscale(0.6);
+}
+
+.service-card--slo-exhausted {
+  border-color: #c53030;
+  background: #fff5f5;
+  box-shadow: 0 0 0 1px rgba(197, 48, 48, 0.25);
 }
 
 .service-card__header {
@@ -421,6 +455,59 @@
   color: #cf222e;
 }
 
+.service-card__slo-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.service-card__slo-status select {
+  padding: 0.15rem 0.3rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.service-card__slo-status--healthy {
+  color: #216e39;
+}
+
+.service-card__slo-status--healthy select,
+.slo-status-badge--healthy {
+  background: #e6ffed;
+  color: #216e39;
+}
+
+.service-card__slo-status--warning {
+  color: #7b341e;
+}
+
+.service-card__slo-status--warning select,
+.slo-status-badge--warning {
+  background: #fff4ce;
+  color: #7b341e;
+}
+
+.service-card__slo-status--exhausted {
+  color: #822727;
+}
+
+.service-card__slo-status--exhausted select,
+.slo-status-badge--exhausted {
+  background: #ffebe9;
+  color: #822727;
+}
+
+.service-matrix__filtered-empty {
+  margin-top: 1rem;
+  color: #57606a;
+}
+
 .service-card__base-hours {
   font-size: 0.75rem;
   color: #57606a;
@@ -477,6 +564,14 @@
   text-align: left;
   padding: 0.4rem 0.6rem;
   border-bottom: 1px solid #e2e8f0;
+}
+
+.slo-status-badge {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
 .summary-report__total {
