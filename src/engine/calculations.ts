@@ -189,6 +189,38 @@ export function getHiringCost(
   return (toilDeficit / (RED_ZONE_THRESHOLD * weeklyHours)) * annualSalary;
 }
 
+export interface UpskillingDividend {
+  hoursRecoveredPerWeek: number;
+  annualizedValue: number;
+  affectedServices: string[];
+}
+
+/** Estimates the weekly effort penalty and annual value recovered by closing expertise gaps. */
+export function calculateUpskillingDividend(services: Service[], globalConfig: GlobalConfig): UpskillingDividend {
+  let hoursRecoveredPerWeek = 0;
+  const affectedServices: string[] = [];
+
+  for (const service of services) {
+    if (!service.isActive || service.hasExpertise) continue;
+
+    const requiredHours = getRequiredHours(service);
+    const recoveredHours = Math.max(
+      0,
+      finiteNumber(requiredHours - requiredHours / EXPERTISE_EFFORT_MULTIPLIER),
+    );
+    if (recoveredHours > 0) {
+      hoursRecoveredPerWeek += recoveredHours;
+      affectedServices.push(service.name);
+    }
+  }
+
+  const weeklyHours = finiteNumber(globalConfig.weeklyHours);
+  const annualizedValue =
+    weeklyHours > 0 ? (hoursRecoveredPerWeek / weeklyHours) * finiteNumber(globalConfig.annualSalary) : 0;
+
+  return { hoursRecoveredPerWeek, annualizedValue, affectedServices };
+}
+
 /**
  * Measures operational load against effective capacity. No operational work
  * yields zero; nonzero work with no effective capacity is treated as saturated.
