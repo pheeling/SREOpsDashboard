@@ -3,7 +3,8 @@ import type { FormEvent } from "react";
 import type { OwnershipModel } from "../engine/types";
 import { useDashboard } from "../state/DashboardContext";
 import { ServiceCard } from "./ServiceCard";
-import { getTotalRequiredHours } from "../engine/calculations";
+import { ParetoToilPanel } from "./ParetoToilPanel";
+import { getParetoToilRanking, getTotalRequiredHours } from "../engine/calculations";
 
 export function ServiceMatrix() {
   const { state, dispatch } = useDashboard();
@@ -30,6 +31,11 @@ export function ServiceMatrix() {
 
   const activeCount = state.services.filter((s) => s.isActive).length;
   const totalRequiredHours = getTotalRequiredHours(state.services);
+  const topToilIds = new Set(
+    getParetoToilRanking(state.services)
+      .entries.filter((entry) => entry.isTopContributor)
+      .map((entry) => entry.id),
+  );
   const avgHoursPerService = activeCount > 0 ? totalRequiredHours / activeCount : 0;
 
   const handleAddCustomService = (event: FormEvent<HTMLFormElement>) => {
@@ -119,6 +125,8 @@ export function ServiceMatrix() {
         </form>
       )}
 
+      <ParetoToilPanel />
+
       {state.services.length === 0 ? (
         <div className="service-matrix__empty" data-testid="services-empty-state">
           <p>No active services in catalog.</p>
@@ -137,6 +145,7 @@ export function ServiceMatrix() {
             <ServiceCard
               key={service.id}
               service={service}
+              isTopToilContributor={topToilIds.has(service.id)}
               onToggleActive={handleToggleActive}
               onToggleExpertise={handleToggleExpertise}
               onToggleAutomation={handleToggleAutomation}

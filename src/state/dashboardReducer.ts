@@ -1,5 +1,6 @@
 import type { DashboardState, GlobalConfig, OwnershipModel, Service } from "../engine/types";
 import { cloneDefaultServices } from "../engine/seedServices";
+import { applyStabilizationSprint } from "../engine/calculations";
 
 export interface NewCustomService {
   name: string;
@@ -12,6 +13,7 @@ export type DashboardAction =
   | { type: "TOGGLE_EXPERTISE"; serviceId: string }
   | { type: "TOGGLE_AUTOMATION"; serviceId: string }
   | { type: "UPDATE_SERVICE_WEIGHT"; serviceId: string; weight: number }
+  | { type: "APPLY_STABILIZATION_SPRINT"; serviceId: string }
   | { type: "SET_OWNERSHIP"; serviceId: string; ownershipModel: OwnershipModel }
   | { type: "ADD_CUSTOM_SERVICE"; payload: NewCustomService }
   | { type: "DELETE_SERVICE"; serviceId: string }
@@ -58,6 +60,8 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
         ),
       };
     }
+    case "APPLY_STABILIZATION_SPRINT":
+      return applyStabilizationSprint(state, action.serviceId);
     case "SET_OWNERSHIP":
       return {
         ...state,

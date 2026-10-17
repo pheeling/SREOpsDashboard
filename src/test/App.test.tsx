@@ -133,3 +133,26 @@ describe("App", () => {
     expect(screen.getByText(/Services \(19\/19 active\)/)).toBeInTheDocument();
   });
 });
+
+describe("Pareto toil & stabilization sprint", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("badges top 3 services and keeps the sprint in preview until applied", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(screen.getAllByText("Top Toil Contributor")).toHaveLength(3);
+    expect(screen.getByTestId("pareto-toil-summary")).toHaveTextContent(/Top 3 drivers account for/);
+
+    const before = screen.getByTestId("service-scaling-note").textContent;
+    await user.click(screen.getByTestId("model-stabilization-sprint"));
+    expect(screen.getByTestId("scenario-load")).toBeInTheDocument();
+    expect(screen.getByTestId("service-scaling-note").textContent).toBe(before);
+
+    await user.click(screen.getByTestId("apply-stabilization-sprint"));
+    expect(screen.getByTestId("service-scaling-note").textContent).not.toBe(before);
+    expect(screen.queryByTestId("stabilization-scenario")).not.toBeInTheDocument();
+  });
+});

@@ -16,6 +16,8 @@ import {
   getEffectiveCapacityHours,
   getHandbackCandidates,
   getHiringCost,
+  getParetoToilRanking,
+  simulateStabilizationSprint,
   getRequiredHours,
   getServiceWeight,
   getTotalAvailableHours,
@@ -406,6 +408,42 @@ describe("Toil Elimination Audit", () => {
       const automatedTotal = getTotalRequiredHours(services.map((s) => ({ ...s, isAutomated: true })));
       expect(automatedTotal).toBeCloseTo(manualTotal / AUTOMATION_REDUCTION_FACTOR);
     }
+  });
+});
+
+describe("Pareto toil ranking & stabilization sprint", () => {
+  const services = [
+    makeService({ id: "a", deployHours: 0, maintenanceHours: 6 }),
+    makeService({ id: "b", deployHours: 0, maintenanceHours: 2 }),
+    makeService({ id: "c", deployHours: 0, maintenanceHours: 1 }),
+    makeService({ id: "d", deployHours: 0, maintenanceHours: 1 }),
+    makeService({ id: "off", deployHours: 0, maintenanceHours: 50, isActive: false }),
+  ];
+  const state: DashboardState = {
+    globalConfig: { fteCount: 4, weeklyHours: 40, annualSalary: 150_000 },
+    services,
+  };
+
+  it("ranks active services and flags the top 3", () => {
+    const p = getParetoToilRanking(services);
+    expect(p.entries.map((e) => e.id)).toEqual(["a", "b", "c", "d"]);
+    expect(p.entries[0].share).toBeCloseTo(0.6);
+    expect(p.topShare).toBeCloseTo(0.9);
+    expect(p.entries.filter((e) => e.isTopContributor)).toHaveLength(3);
+    expect(p.entries[3].cumulativeShare).toBeCloseTo(1);
+  });
+
+  it("simulates halving the top service without mutating state", () => {
+    const s = simulateStabilizationSprint(state)!;
+    expect(s.serviceId).toBe("a");
+    expect(s.hoursSavedPerWeek).toBeCloseTo(3);
+    expect(s.after.buckets.maintenance).toBeCloseTo(s.before.buckets.maintenance - 3);
+    expect(s.after.operationalLoadRatio).toBeLessThan(s.before.operationalLoadRatio);
+    expect(state.services[0].maintenanceHours).toBe(6);
+  });
+
+  it("returns null when no active toil exists", () => {
+    expect(simulateStabilizationSprint({ ...state, services: [] })).toBeNull();
   });
 });
 
