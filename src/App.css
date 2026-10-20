@@ -1270,7 +1270,7 @@
 
 .brand {
   display: flex;
-  flex: 0 0 224px;
+  flex: 0 0 auto;
   align-items: center;
   gap: 0.65rem;
   color: var(--text-h);
@@ -1293,35 +1293,6 @@
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.12em;
-}
-
-.brand__name span {
-  color: var(--muted);
-  font-weight: 500;
-}
-
-.topbar__cluster {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-width: 205px;
-  height: 40px;
-  padding-left: 1.25rem;
-  border-left: 1px solid var(--border);
-}
-
-.topbar__eyebrow {
-  color: var(--muted);
-  font-size: 0.58rem;
-  letter-spacing: 0.12em;
-}
-
-.topbar__cluster select {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  color: var(--text-h);
-  font: 600 0.78rem var(--mono);
 }
 
 .topbar__search {
@@ -1356,14 +1327,6 @@
   font: 0.65rem var(--mono);
 }
 
-.topbar__health {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  column-gap: 0.45rem;
-  min-width: 130px;
-}
-
 .status-dot {
   display: inline-block;
   width: 7px;
@@ -1371,77 +1334,6 @@
   border-radius: 50%;
   background: var(--success);
   box-shadow: 0 0 10px rgb(93 226 162 / 48%);
-}
-
-.topbar__health .status-dot {
-  grid-row: span 2;
-}
-
-.topbar__health-label {
-  color: var(--muted);
-  font-size: 0.56rem;
-  letter-spacing: 0.1em;
-}
-
-.topbar__health strong {
-  color: var(--success);
-  font-size: 0.78rem;
-}
-
-.topbar__health strong span,
-.mobile-health > span:last-child {
-  color: var(--muted);
-  font-family: var(--sans);
-  font-size: 0.65rem;
-}
-
-.pager-toggle,
-.profile-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  gap: 0.5rem;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
-}
-
-.pager-toggle__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--muted);
-}
-
-.pager-toggle--on .pager-toggle__dot {
-  background: var(--success);
-}
-
-.profile-button__avatar,
-.mobile-avatar {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-  border-radius: 50%;
-  background: #35465d;
-  color: #e7f4ff;
-  font-size: 0.68rem;
-  font-weight: 700;
-}
-
-.profile-button__name {
-  color: var(--text-h);
-  font-size: 0.78rem;
-}
-
-.mobile-health,
-.mobile-alerts,
-.mobile-avatar {
-  display: none;
 }
 
 .app-layout {
@@ -1726,83 +1618,21 @@
   .live-feed {
     display: none;
   }
-
-  .brand {
-    flex-basis: auto;
-  }
-
-  .brand__name,
-  .topbar__cluster,
-  .profile-button__name {
-    display: none;
-  }
 }
 
 @media (max-width: 767px) {
   .topbar {
     height: 56px;
-    justify-content: space-between;
     gap: 0.6rem;
     padding: 0 0.85rem;
   }
 
-  .brand {
-    flex: 0 0 auto;
+  .topbar__search {
+    max-width: none;
   }
 
-  .brand__name,
-  .topbar__cluster,
-  .topbar__search,
-  .topbar__health,
-  .pager-toggle,
-  .profile-button,
   .sidebar {
     display: none;
-  }
-
-  .brand__mark {
-    width: 44px;
-    height: 44px;
-  }
-
-  .mobile-health {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    color: var(--success);
-    font-size: 0.7rem;
-  }
-
-  .mobile-alerts {
-    position: relative;
-    display: inline-grid;
-    width: 44px;
-    height: 44px;
-    place-items: center;
-    border: 0;
-    background: transparent;
-    color: var(--text);
-    font-size: 1.2rem;
-  }
-
-  .mobile-alerts span {
-    position: absolute;
-    top: 3px;
-    right: 2px;
-    display: grid;
-    width: 16px;
-    height: 16px;
-    place-items: center;
-    border: 2px solid var(--background);
-    border-radius: 50%;
-    background: var(--error);
-    color: var(--background);
-    font: 0.55rem var(--mono);
-  }
-
-  .mobile-avatar {
-    display: grid;
-    flex: 0 0 32px;
   }
 
   .app-layout {

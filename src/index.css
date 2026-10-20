@@ -122,9 +122,7 @@ code {
 .hiring-cost-widget__amount,
 .service-card__weight,
 .pareto-toil__list li,
-.handback-simulator__list li,
-.topbar__health strong,
-.mobile-health {
+.handback-simulator__list li {
   font-family: var(--mono);
   font-feature-settings: "tnum" 1, "zero" 1;
   font-variant-numeric: tabular-nums lining-nums;
