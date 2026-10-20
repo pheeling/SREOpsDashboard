@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import type { OwnershipModel, SloStatus } from "../engine/types";
 import { useDashboard } from "../state/DashboardContext";
@@ -8,7 +8,11 @@ import { CriticalityToilQuadrant } from "./CriticalityToilQuadrant";
 import { getServiceQuadrantKey, type QuadrantKey } from "./serviceQuadrants";
 import { ParetoToilPanel } from "./ParetoToilPanel";
 
-export function ServiceMatrix() {
+interface ServiceMatrixProps {
+  reveal?: { serviceId: string; nonce: number } | null;
+}
+
+export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
   const { state, dispatch } = useDashboard();
   const [showAddForm, setShowAddForm] = useState(false);
   const [name, setName] = useState("");
@@ -17,6 +21,15 @@ export function ServiceMatrix() {
   const [sloFilter, setSloFilter] = useState<"all" | "exhausted" | "at-risk">("all");
   const [selectedQuadrantFilter, setSelectedQuadrantFilter] = useState<QuadrantKey | null>(null);
   const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(() => new Set());
+
+  const revealServiceId = reveal?.serviceId;
+  const revealNonce = reveal?.nonce;
+  useEffect(() => {
+    if (!revealServiceId) return;
+    setSloFilter("all");
+    setSelectedQuadrantFilter(null);
+    setExpandedCardIds((current) => new Set(current).add(revealServiceId));
+  }, [revealServiceId, revealNonce]);
 
   const toggleExpandedCard = (serviceId: string) => {
     setExpandedCardIds((current) => {

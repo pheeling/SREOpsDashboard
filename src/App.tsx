@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DashboardProvider, useDashboard } from "./state/DashboardContext";
 import { GlobalConfigPanel } from "./components/GlobalConfigPanel";
 import { LoadGauge } from "./components/LoadGauge";
@@ -8,25 +8,23 @@ import { ServiceMatrix } from "./components/ServiceMatrix";
 import { SummaryReport } from "./components/SummaryReport";
 import { CapacityBucketsChart } from "./components/CapacityBucketsChart";
 import { WarningBanner } from "./components/WarningBanner";
+import { SearchBar } from "./components/SearchBar";
+import type { SearchEntry } from "./search/searchIndex";
 import { calculateUpskillingDividend, computeCapacityReport } from "./engine/calculations";
 import "./App.css";
 
 type DashboardTab = "summary" | "team" | "services";
-type QuickTab = "overview" | "incidents" | "topology" | "slo-costs";
 
-const dashboardTabForQuickTab: Record<QuickTab, DashboardTab> = {
-  overview: "summary",
-  incidents: "services",
-  topology: "services",
-  "slo-costs": "team",
-};
-
-const quickTabs: { id: QuickTab; label: string; icon: string }[] = [
-  { id: "overview", label: "Overview", icon: "◫" },
-  { id: "incidents", label: "Incidents", icon: "!" },
-  { id: "topology", label: "Topology", icon: "◎" },
-  { id: "slo-costs", label: "SLO/Costs", icon: "⌁" },
+const dashboardTabs: { id: DashboardTab; label: string; shortLabel: string; icon: string }[] = [
+  { id: "summary", label: "Executive Summary", shortLabel: "Executive Summary", icon: "◫" },
+  { id: "team", label: "Team & Capacity Settings", shortLabel: "Team & Capacity", icon: "◷" },
+  { id: "services", label: "Service Breakdown & Toil Analysis", shortLabel: "Service Breakdown", icon: "⌁" },
 ];
+
+const HIGHLIGHT_CLASS = "search-highlight";
+const HIGHLIGHT_DURATION_MS = 1800;
+const JUMP_RETRY_MS = 50;
+const JUMP_MAX_ATTEMPTS = 20;
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -71,7 +69,7 @@ function ExecutiveKpis({ onViewRoiReport }: { onViewRoiReport: () => void }) {
 
   return (
     <section className="executive-kpis" aria-label="Executive summary metrics">
-      <article className="dashboard-card executive-kpi">
+      <article className="dashboard-card executive-kpi" id="search-target-kpi-operational-load">
         <h2>Operational Load &amp; Toil Capacity</h2>
         <p className="executive-kpi__metric" data-testid="kpi-operational-load">
           {operationalLoad.toFixed(0)}%
@@ -96,7 +94,7 @@ function ExecutiveKpis({ onViewRoiReport }: { onViewRoiReport: () => void }) {
         </div>
         <p className="executive-kpi__caption">50% sustainable SRE capacity threshold</p>
       </article>
-      <article className="dashboard-card executive-kpi">
+      <article className="dashboard-card executive-kpi" id="search-target-kpi-automation-roi">
         <h2>Automation ROI &amp; Financial Impact</h2>
         <p className="executive-kpi__metric" data-testid="kpi-upskilling-value">
           {currencyFormatter.format(dividend.annualizedValue)}/yr
@@ -114,7 +112,7 @@ function ExecutiveKpis({ onViewRoiReport }: { onViewRoiReport: () => void }) {
           View Automation ROI Summary Report
         </button>
       </article>
-      <article className="dashboard-card executive-kpi">
+      <article className="dashboard-card executive-kpi" id="search-target-kpi-prr-governance">
         <h2>PRR &amp; Service Readiness</h2>
         <p className="executive-kpi__metric" data-testid="kpi-active-services">
           {activeServices.length}/{state.services.length} Active
@@ -126,7 +124,7 @@ function ExecutiveKpis({ onViewRoiReport }: { onViewRoiReport: () => void }) {
           {approvedServices.length} PRR approved · {activeServices.length - approvedServices.length} deficient
         </p>
       </article>
-      <article className="dashboard-card executive-kpi">
+      <article className="dashboard-card executive-kpi" id="search-target-kpi-slo-health">
         <h2>SLO Health &amp; Error Budget</h2>
         <p className="executive-kpi__metric" data-testid="kpi-slo-health">
           {healthyPercent === null ? "N/A" : `${healthyPercent.toFixed(1)}%`}
@@ -156,18 +154,43 @@ function ExecutiveKpis({ onViewRoiReport }: { onViewRoiReport: () => void }) {
 
 function DashboardContent() {
   const [activeTab, setActiveTab] = useState<DashboardTab>("summary");
-  const [activeQuickTab, setActiveQuickTab] = useState<QuickTab>("overview");
   const [showSummaryReport, setShowSummaryReport] = useState(false);
+  const [jump, setJump] = useState<{ targetId: string; serviceId?: string; nonce: number } | null>(null);
+
+  const handleSearchSelect = (entry: SearchEntry) => {
+    setActiveTab(entry.tab);
+    setShowSummaryReport(false);
+    setJump((current) => ({ targetId: entry.targetId, serviceId: entry.serviceId, nonce: (current?.nonce ?? 0) + 1 }));
+  };
+
+  useEffect(() => {
+    if (!jump) return;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    let highlighted: HTMLElement | null = null;
+    const run = () => {
+      const target = document.getElementById(jump.targetId);
+      if (!target) {
+        attempts += 1;
+        if (attempts < JUMP_MAX_ATTEMPTS) timer = setTimeout(run, JUMP_RETRY_MS);
+        return;
+      }
+      target.scrollIntoView?.({ behavior: "smooth", block: "center" });
+      target.classList.remove(HIGHLIGHT_CLASS);
+      void target.offsetWidth;
+      target.classList.add(HIGHLIGHT_CLASS);
+      highlighted = target;
+      timer = setTimeout(() => target.classList.remove(HIGHLIGHT_CLASS), HIGHLIGHT_DURATION_MS);
+    };
+    timer = setTimeout(run, 0);
+    return () => {
+      clearTimeout(timer);
+      highlighted?.classList.remove(HIGHLIGHT_CLASS);
+    };
+  }, [jump]);
 
   const selectTab = (tab: DashboardTab) => {
     setActiveTab(tab);
-    setActiveQuickTab(tab === "summary" ? "overview" : tab === "team" ? "slo-costs" : "incidents");
-    setShowSummaryReport(false);
-  };
-
-  const selectQuickTab = (tab: QuickTab) => {
-    setActiveQuickTab(tab);
-    setActiveTab(dashboardTabForQuickTab[tab]);
     setShowSummaryReport(false);
   };
 
@@ -178,31 +201,23 @@ function DashboardContent() {
           <span className="brand__mark" aria-hidden="true">◈</span>
           <span className="brand__name">SRE Dashboard</span>
         </a>
-        <label className="topbar__search">
-          <span aria-hidden="true">⌕</span>
-          <input type="search" aria-label="Search telemetry" placeholder="Search anything..." />
-          <kbd>⌘ K</kbd>
-        </label>
+        <SearchBar onSelect={handleSearchSelect} />
       </header>
 
       <div className="app-layout">
         <aside className="sidebar" aria-label="Main navigation">
           <div className="sidebar__navigation">
-            <details open>
-              <summary>WORKSPACE</summary>
-              <button type="button" className={activeTab === "summary" ? "sidebar__link sidebar__link--active" : "sidebar__link"} onClick={() => selectTab("summary")}><span>◫</span> Overview</button>
-              <button type="button" className={activeTab === "services" ? "sidebar__link sidebar__link--active" : "sidebar__link"} onClick={() => selectTab("services")}><span>⌁</span> Service health</button>
-            </details>
-            <details open>
-              <summary>OBSERVABILITY</summary>
-              <button type="button" className="sidebar__link" onClick={() => selectTab("services")}><span>◎</span> Topology</button>
-              <button type="button" className="sidebar__link" onClick={() => selectTab("services")}><span>⌁</span> SLO &amp; error budgets</button>
-              <button type="button" className="sidebar__link" onClick={() => selectTab("services")}><span>◉</span> Incidents <span className="sidebar__count">2</span></button>
-            </details>
-            <details open>
-              <summary>MANAGEMENT</summary>
-              <button type="button" className={activeTab === "team" ? "sidebar__link sidebar__link--active" : "sidebar__link"} onClick={() => selectTab("team")}><span>◷</span> Capacity &amp; costs</button>
-            </details>
+            {dashboardTabs.map(({ id, label, icon }) => (
+              <button
+                key={id}
+                type="button"
+                className={activeTab === id ? "sidebar__link sidebar__link--active" : "sidebar__link"}
+                aria-current={activeTab === id ? "page" : undefined}
+                onClick={() => selectTab(id)}
+              >
+                <span aria-hidden="true">{icon}</span> {label}
+              </button>
+            ))}
           </div>
           <section className="live-feed" aria-label="Telemetry live feed">
             <h2><span className="status-dot" /> LIVE TELEMETRY</h2>
@@ -217,26 +232,6 @@ function DashboardContent() {
         <h1>SRE Infrastructure Complexity &amp; Operational Capacity Calculator</h1>
         <p>Quantify operational toil and keep it under the 50% SRE capacity threshold.</p>
       </header>
-
-      <nav className="dashboard-tabs" aria-label="Dashboard sections">
-        {(
-          [
-            ["summary", "Executive Summary"],
-            ["team", "Team & Capacity Settings"],
-            ["services", "Service Breakdown & Toil Analysis"],
-          ] as const
-        ).map(([tab, label]) => (
-          <button
-            key={tab}
-            type="button"
-            className={`dashboard-tabs__tab ${activeTab === tab ? "dashboard-tabs__tab--active" : ""}`}
-            aria-current={activeTab === tab ? "page" : undefined}
-            onClick={() => selectTab(tab)}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
 
       <WarningBanner />
 
@@ -267,23 +262,23 @@ function DashboardContent() {
           <CapacityBucketsChart />
           <LoadGauge />
           <HandbackSimulator />
-          <ServiceMatrix />
+          <ServiceMatrix reveal={jump?.serviceId ? { serviceId: jump.serviceId, nonce: jump.nonce } : null} />
         </section>
       )}
         </main>
       </div>
 
       <nav className="mobile-nav" aria-label="Quick navigation">
-        {quickTabs.map(({ id, label, icon }) => (
+        {dashboardTabs.map(({ id, shortLabel, icon }) => (
           <button
             key={id}
             type="button"
-            className={activeQuickTab === id ? "mobile-nav__item mobile-nav__item--active" : "mobile-nav__item"}
-            aria-current={activeQuickTab === id ? "page" : undefined}
-            onClick={() => selectQuickTab(id)}
+            className={activeTab === id ? "mobile-nav__item mobile-nav__item--active" : "mobile-nav__item"}
+            aria-current={activeTab === id ? "page" : undefined}
+            onClick={() => selectTab(id)}
           >
             <span className="mobile-nav__icon" aria-hidden="true">{icon}</span>
-            <span>{label}</span>
+            <span>{shortLabel}</span>
           </button>
         ))}
       </nav>

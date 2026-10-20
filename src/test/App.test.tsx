@@ -4,8 +4,12 @@ import userEvent from "@testing-library/user-event";
 import App from "../App";
 import { STORAGE_KEY } from "../state/localStorage";
 
+function sidebarLink(name: string) {
+  return within(screen.getByRole("complementary", { name: "Main navigation" })).getByRole("button", { name });
+}
+
 async function showServices(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: "Service Breakdown & Toil Analysis" }));
+  await user.click(sidebarLink("Service Breakdown & Toil Analysis"));
 }
 
 async function expandService(user: ReturnType<typeof userEvent.setup>, serviceId: string) {
@@ -25,7 +29,7 @@ describe("App", () => {
 
     expect(document.querySelector(".topbar")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "SRE Dashboard home" })).toHaveTextContent("SRE Dashboard");
-    expect(screen.getByRole("searchbox", { name: "Search telemetry" })).toHaveAttribute("placeholder", "Search anything...");
+    expect(screen.getByRole("combobox", { name: "Search telemetry" })).toHaveAttribute("placeholder", "Search anything...");
     expect(screen.queryByLabelText("Cluster")).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/System status/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Pager/ })).not.toBeInTheDocument();
@@ -34,15 +38,21 @@ describe("App", () => {
     expect(screen.getByRole("region", { name: "Telemetry live feed" })).toBeInTheDocument();
 
     const quickNavigation = screen.getByRole("navigation", { name: "Quick navigation" });
-    await user.click(within(quickNavigation).getByRole("button", { name: "Topology" }));
-    expect(within(quickNavigation).getByRole("button", { name: "Topology" })).toHaveAttribute("aria-current", "page");
+    expect(within(quickNavigation).getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "◫Executive Summary",
+      "◷Team & Capacity",
+      "⌁Service Breakdown",
+    ]);
+    await user.click(within(quickNavigation).getByRole("button", { name: "Service Breakdown" }));
+    expect(within(quickNavigation).getByRole("button", { name: "Service Breakdown" })).toHaveAttribute("aria-current", "page");
+    expect(sidebarLink("Service Breakdown & Toil Analysis")).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("region", { name: "Service Breakdown and Toil Analysis" })).toBeInTheDocument();
   });
 
   it("defaults to the executive summary with dynamic KPI cards and financial impact", () => {
     render(<App />);
 
-    expect(screen.getByRole("navigation", { name: "Dashboard sections" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Dashboard sections" })).not.toBeInTheDocument();
     expect(screen.getByTestId("kpi-operational-load")).toBeInTheDocument();
     expect(screen.getByTestId("kpi-upskilling-value")).toHaveTextContent("$0/yr");
     expect(screen.getByTestId("kpi-operational-hours")).toHaveTextContent(/hrs toward operational work/);
@@ -65,7 +75,7 @@ describe("App", () => {
     await user.click(within(database).getByLabelText("Databases PRR Approved"));
     await user.selectOptions(within(database).getByLabelText("Databases SLO Status"), "exhausted");
 
-    await user.click(screen.getByRole("button", { name: "Executive Summary" }));
+    await user.click(sidebarLink("Executive Summary"));
 
     expect(screen.getByTestId("kpi-prr-status")).toHaveTextContent("DEFICIENT");
     expect(screen.getByTestId("kpi-prr-count")).toHaveTextContent("18 PRR approved · 1 deficient");
@@ -77,7 +87,7 @@ describe("App", () => {
   it("warns when the configured team has fewer than four engineers", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", { name: "Team & Capacity Settings" }));
+    await user.click(sidebarLink("Team & Capacity Settings"));
 
     const fteInput = screen.getByLabelText("FTE Count");
     await user.clear(fteInput);
@@ -95,13 +105,13 @@ describe("App", () => {
   it("allows the team to adjust its effective capacity factor", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", { name: "Team & Capacity Settings" }));
+    await user.click(sidebarLink("Team & Capacity Settings"));
 
     const capacityInput = screen.getByLabelText("Effective Capacity (%)");
     fireEvent.change(capacityInput, { target: { value: "50" } });
 
     expect(capacityInput).toHaveValue("50");
-    await user.click(screen.getByRole("button", { name: "Service Breakdown & Toil Analysis" }));
+    await user.click(sidebarLink("Service Breakdown & Toil Analysis"));
     expect(screen.getByTestId("capacity-segment-emergencyResponse").getAttribute("title")).toContain("10.0 hrs");
   });
 
@@ -110,15 +120,15 @@ describe("App", () => {
     render(<App />);
     const initialLoad = screen.getByTestId("kpi-operational-load").textContent;
 
-    await user.click(screen.getByRole("button", { name: "Team & Capacity Settings" }));
+    await user.click(sidebarLink("Team & Capacity Settings"));
     const fteSlider = screen.getByLabelText("FTE Count slider");
     fireEvent.change(fteSlider, { target: { value: "8" } });
     expect(screen.getByLabelText("FTE Count")).toHaveValue(8);
-    await user.click(screen.getByRole("button", { name: "Executive Summary" }));
+    await user.click(sidebarLink("Executive Summary"));
     expect(screen.getByTestId("kpi-operational-load").textContent).not.toBe(initialLoad);
 
-    await user.click(screen.getByRole("button", { name: "Service Breakdown & Toil Analysis" }));
-    await user.click(screen.getByRole("button", { name: "Team & Capacity Settings" }));
+    await user.click(sidebarLink("Service Breakdown & Toil Analysis"));
+    await user.click(sidebarLink("Team & Capacity Settings"));
     expect(screen.getByLabelText("FTE Count")).toHaveValue(8);
     expect(screen.getByRole("switch", { name: "Dedicated Interrupt Shield" })).toHaveAttribute("aria-checked", "false");
   });
@@ -146,7 +156,7 @@ describe("App", () => {
   it("formats salary as currency and updates the interrupt shield state", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", { name: "Team & Capacity Settings" }));
+    await user.click(sidebarLink("Team & Capacity Settings"));
 
     const salary = screen.getByLabelText("Annual Salary Baseline ($)");
     await user.clear(salary);
@@ -259,7 +269,7 @@ describe("App", () => {
     await showServices(user);
     const database = await expandService(user, "databases");
     await user.selectOptions(within(database).getByLabelText("Databases SLO Status"), "warning");
-    await user.click(screen.getByRole("button", { name: "Executive Summary" }));
+    await user.click(sidebarLink("Executive Summary"));
     await user.click(screen.getByTestId("toggle-summary-report"));
 
     expect(screen.getByRole("columnheader", { name: "SLO Status" })).toBeInTheDocument();
@@ -323,7 +333,7 @@ describe("App", () => {
 
     await user.click(expertiseToggle);
 
-    await user.click(screen.getByRole("button", { name: "Executive Summary" }));
+    await user.click(sidebarLink("Executive Summary"));
     expect(screen.getByTestId("kpi-upskilling-hours")).toHaveTextContent(/\d+\.\d/);
     expect(screen.getByTestId("kpi-upskilling-value")).not.toHaveTextContent("$0/yr");
     expect(screen.getByRole("list", { name: "Services with expertise gaps" })).toHaveTextContent("Databases");
@@ -334,11 +344,11 @@ describe("App", () => {
     expect(onboardingDetails.parentElement).toHaveAttribute("open");
     expect(screen.getByRole("list", { name: "Services with expertise gaps" })).toHaveTextContent("Databases");
 
-    await user.click(screen.getByRole("button", { name: "Service Breakdown & Toil Analysis" }));
+    await user.click(sidebarLink("Service Breakdown & Toil Analysis"));
     await expandService(user, "databases");
     await user.click(screen.getByLabelText("Databases Expertise"));
 
-    await user.click(screen.getByRole("button", { name: "Executive Summary" }));
+    await user.click(sidebarLink("Executive Summary"));
     expect(screen.queryByRole("list", { name: "Services with expertise gaps" })).not.toBeInTheDocument();
     expect(screen.getByText("No active services have an expertise gap to address.")).toBeInTheDocument();
   });
@@ -391,7 +401,7 @@ describe("App", () => {
   it("shows service allocation fields and recalculates bucket shares when automation changes", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", { name: "Team & Capacity Settings" }));
+    await user.click(sidebarLink("Team & Capacity Settings"));
     fireEvent.change(screen.getByLabelText("FTE Count slider"), { target: { value: "50" } });
     await showServices(user);
 
@@ -416,7 +426,7 @@ describe("App", () => {
   it("always displays lost cognitive overhead and reports shield recovery separately", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", { name: "Team & Capacity Settings" }));
+    await user.click(sidebarLink("Team & Capacity Settings"));
     fireEvent.change(screen.getByLabelText("FTE Count slider"), { target: { value: "50" } });
     await showServices(user);
 
@@ -424,7 +434,7 @@ describe("App", () => {
     expect(screen.getByTestId("cognitive-overhead")).not.toHaveTextContent("0.0 hrs");
     expect(screen.queryByTestId("recovered-hours")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Team & Capacity Settings" }));
+    await user.click(sidebarLink("Team & Capacity Settings"));
     await user.click(screen.getByRole("switch", { name: "Dedicated Interrupt Shield" }));
     await showServices(user);
 
@@ -476,5 +486,53 @@ describe("Pareto toil & stabilization sprint", () => {
     await user.click(screen.getByTestId("apply-stabilization-sprint"));
     expect(screen.getByTestId("service-scaling-note").textContent).not.toBe(before);
     expect(screen.queryByTestId("stabilization-scenario")).not.toBeInTheDocument();
+  });
+});
+
+describe("Global search", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("fuzzy matches misspelled queries and supports keyboard navigation", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const input = screen.getByRole("combobox", { name: "Search telemetry" });
+
+    await user.type(input, "salry");
+    expect(screen.getByRole("option", { name: /Annual Salary Baseline/ })).toBeInTheDocument();
+    await user.clear(input);
+    await user.type(input, "opration");
+    expect(within(screen.getByRole("listbox", { name: "Search results" })).getAllByRole("option")[0]).toHaveTextContent(/Operational Load/);
+    await user.clear(input);
+    await user.type(input, "maintnance");
+    expect(screen.getByRole("option", { name: /Error Budget Buckets/ })).toBeInTheDocument();
+    await user.clear(input);
+    await user.type(input, "bakup");
+    expect(screen.getByRole("option", { name: /Backup/ })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("jumps to a collapsed service card, expands it and highlights it", async () => {
+    const user = userEvent.setup();
+    const scrollIntoView = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    render(<App />);
+
+    await user.type(screen.getByRole("combobox", { name: "Search telemetry" }), "backp{Enter}");
+
+    const card = await screen.findByTestId("service-card-backup");
+    await vi.waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "center" }));
+    expect(card).toHaveClass("search-highlight");
+    expect(within(card).getByRole("button", { name: /hrs\/wk/ })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("switches tabs when selecting an input on another tab", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByRole("combobox", { name: "Search telemetry" }), "salry");
+    await user.click(screen.getByRole("option", { name: /Annual Salary Baseline/ }));
+    await vi.waitFor(() => expect(document.getElementById("search-target-annual-salary")).toHaveClass("search-highlight"));
   });
 });

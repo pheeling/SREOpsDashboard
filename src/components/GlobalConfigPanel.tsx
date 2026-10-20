@@ -35,7 +35,7 @@ export function GlobalConfigPanel() {
   return (
     <section className="dashboard-card global-config-panel" aria-label="Team Configuration">
       <h2>Team Configuration</h2>
-      <div className="config-control">
+      <div className="config-control" id="search-target-fte-count">
         <label htmlFor="fte-count">FTE Count</label>
         <div className="config-control__range-row">
           <input
@@ -67,7 +67,7 @@ export function GlobalConfigPanel() {
         </div>
       </div>
 
-      <div className="config-control">
+      <div className="config-control" id="search-target-weekly-hours">
         <label htmlFor="weekly-hours">Weekly Hours per FTE</label>
         <input
           id="weekly-hours"
@@ -83,7 +83,7 @@ export function GlobalConfigPanel() {
         <output htmlFor="weekly-hours">{globalConfig.weeklyHours} hrs/wk</output>
       </div>
 
-      <div className={`config-control config-control--capacity ${capacityPercent > 50 ? "config-control--over-half" : ""}`}>
+      <div id="search-target-effective-capacity" className={`config-control config-control--capacity ${capacityPercent > 50 ? "config-control--over-half" : ""}`}>
         <label htmlFor="effective-capacity">Effective Capacity (%)</label>
         <input
           id="effective-capacity"
@@ -102,7 +102,7 @@ export function GlobalConfigPanel() {
         <output htmlFor="effective-capacity">{capacityPercent}%</output>
       </div>
 
-      <div className="config-control">
+      <div className="config-control" id="search-target-annual-salary">
         <label htmlFor="annual-salary">Annual Salary Baseline ($)</label>
         <input
           id="annual-salary"
@@ -114,7 +114,7 @@ export function GlobalConfigPanel() {
         />
       </div>
 
-      <div className="config-control config-control--switch">
+      <div className="config-control config-control--switch" id="search-target-interrupt-shield">
         <span>Dedicated Interrupt Shield</span>
         <button
           type="button"
