@@ -175,7 +175,7 @@ export function ServiceMatrix() {
       <ParetoToilPanel />
 
       <div className="service-matrix__list-toolbar">
-        <h3>Service Breakdown</h3>
+        <h3>Service Toil Allocation</h3>
         <button
           type="button"
           className={`service-matrix__all-filter ${selectedQuadrantFilter === null ? "service-matrix__all-filter--active" : ""}`}
@@ -204,24 +204,33 @@ export function ServiceMatrix() {
             No services match the selected filters.
           </p>
         ) : (
-          <div className="service-matrix__grid">
-            {visibleServices.map((service) => (
-              <ServiceCard
-                key={service.id}
-                service={service}
-                isExpanded={expandedCardIds.has(service.id)}
-                onToggleExpanded={toggleExpandedCard}
-                isTopToilContributor={topToilIds.has(service.id)}
-                onToggleActive={handleToggleActive}
-                onToggleExpertise={handleToggleExpertise}
-                onToggleAutomation={handleToggleAutomation}
-                onTogglePrr={handleTogglePrr}
-                onChangeSloStatus={handleChangeSloStatus}
-                onChangeWeight={handleChangeWeight}
-                onChangeOwnership={handleChangeOwnership}
-                onDelete={handleDelete}
-              />
-            ))}
+          <div className="service-matrix__allocation">
+            <div className="service-matrix__columns" aria-hidden="true">
+              <span>Service &amp; ownership</span>
+              <span>Toil load</span>
+              <span>PRR compliance</span>
+              <span>SLO status</span>
+              <span>Automation</span>
+            </div>
+            <div className="service-matrix__grid">
+              {visibleServices.map((service) => (
+                <ServiceCard
+                  key={service.id}
+                  service={service}
+                  isExpanded={expandedCardIds.has(service.id)}
+                  onToggleExpanded={toggleExpandedCard}
+                  isTopToilContributor={topToilIds.has(service.id)}
+                  onToggleActive={handleToggleActive}
+                  onToggleExpertise={handleToggleExpertise}
+                  onToggleAutomation={handleToggleAutomation}
+                  onTogglePrr={handleTogglePrr}
+                  onChangeSloStatus={handleChangeSloStatus}
+                  onChangeWeight={handleChangeWeight}
+                  onChangeOwnership={handleChangeOwnership}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
           </div>
         )
       )}

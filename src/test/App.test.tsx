@@ -337,6 +337,50 @@ describe("App", () => {
     expect(screen.getByText("New Features / Innovation & Toil Reduction")).toBeInTheDocument();
   });
 
+  it("shows service allocation fields and recalculates bucket shares when automation changes", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Team & Capacity Settings" }));
+    fireEvent.change(screen.getByLabelText("FTE Count slider"), { target: { value: "50" } });
+    await showServices(user);
+
+    const card = screen.getByTestId("service-card-backup");
+    expect(screen.getByText("Service & ownership")).toBeInTheDocument();
+    expect(screen.getByText("Toil load")).toBeInTheDocument();
+    expect(screen.getByText("PRR compliance")).toBeInTheDocument();
+    expect(screen.getByText("SLO status")).toBeInTheDocument();
+    expect(screen.getByText("Automation")).toBeInTheDocument();
+    expect(within(card).getByText("SRE Owned")).toBeInTheDocument();
+    expect(within(card).getByText("Healthy · ≥20% remaining", { selector: ".slo-status-badge" })).toBeInTheDocument();
+    expect(within(card).getByLabelText("Backup Automation")).not.toBeChecked();
+
+    const innovationSegment = screen.getByTestId("capacity-segment-innovation");
+    const initialWidth = innovationSegment.style.width;
+    await user.click(within(card).getByLabelText("Backup Automation"));
+
+    expect(innovationSegment.style.width).not.toBe(initialWidth);
+    expect(within(card).getByLabelText("Backup Automation")).toBeChecked();
+  });
+
+  it("always displays lost cognitive overhead and reports shield recovery separately", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Team & Capacity Settings" }));
+    fireEvent.change(screen.getByLabelText("FTE Count slider"), { target: { value: "50" } });
+    await showServices(user);
+
+    expect(screen.getByTestId("cognitive-overhead")).toHaveTextContent("Lost cognitive overhead");
+    expect(screen.getByTestId("cognitive-overhead")).not.toHaveTextContent("0.0 hrs");
+    expect(screen.queryByTestId("recovered-hours")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Team & Capacity Settings" }));
+    await user.click(screen.getByRole("switch", { name: "Dedicated Interrupt Shield" }));
+    await showServices(user);
+
+    expect(screen.getByTestId("cognitive-overhead")).toHaveTextContent("0.0 hrs");
+    expect(screen.getByTestId("recovered-hours")).toBeInTheDocument();
+  });
+
   it("deletes a single service, delete-all empties the catalog, and defaults can be restored", async () => {
     const user = userEvent.setup();
     vi.spyOn(window, "confirm").mockReturnValue(true);

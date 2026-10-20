@@ -5,8 +5,8 @@ const BUCKET_META = [
   { key: "innovation" as const, label: "New Features / Innovation & Toil Reduction", color: "#2f855a" },
   { key: "maintenance" as const, label: "Routine Operations & Maintenance Toil", color: "#c53030" },
   { key: "emergencyResponse" as const, label: "Emergency Response & Troubleshooting", color: "#dd6b20" },
-  { key: "testingScaling" as const, label: "Testing & User Scaling", color: "#3182ce" },
-  { key: "securityCompliance" as const, label: "Security & Compliance Patching", color: "#805ad5" },
+  { key: "testingScaling" as const, label: "Testing & Scaling / User Growth", color: "#3182ce" },
+  { key: "securityCompliance" as const, label: "Security & Patching / Compliance", color: "#805ad5" },
   { key: "onCallMonitoring" as const, label: "On-Call & Monitoring", color: "#d69e2e" },
 ];
 
@@ -44,6 +44,15 @@ export function CapacityBucketsChart() {
           />
         ))}
       </div>
+      <p className="capacity-chart__overhead" data-testid="cognitive-overhead">
+        Lost cognitive overhead (context switching): {report.cognitiveOverheadHours.toFixed(1)} hrs
+      </p>
+      {report.recoveredInnovationHours > 0 && (
+        <p className="capacity-chart__shield" data-testid="recovered-hours">
+          Interrupt shield recovers {report.recoveredInnovationHours.toFixed(1)} engineering hrs of context-switching
+          overhead.
+        </p>
+      )}
       <ul className="capacity-chart__legend">
         {bucketMetrics.map(({ key, label, color, value, bucketShare, capacityPercent }) => (
           <li key={key} className="capacity-chart__legend-item">
@@ -56,16 +65,6 @@ export function CapacityBucketsChart() {
           </li>
         ))}
       </ul>
-      {report.recoveredInnovationHours > 0 ? (
-        <p className="capacity-chart__shield" data-testid="recovered-hours">
-          Interrupt shield recovers {report.recoveredInnovationHours.toFixed(1)} engineering hrs of context-switching
-          overhead.
-        </p>
-      ) : (
-        <p className="capacity-chart__overhead" data-testid="cognitive-overhead">
-          Lost cognitive overhead (context switching): {report.cognitiveOverheadHours.toFixed(1)} hrs
-        </p>
-      )}
     </section>
   );
 }
