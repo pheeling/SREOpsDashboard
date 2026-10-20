@@ -35,7 +35,8 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: /Pager/ })).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/User profile/)).not.toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: "Main navigation" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Telemetry live feed" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Live audit log" })).toBeInTheDocument();
+    expect(screen.getByText("LIVE AUDIT LOG")).toBeInTheDocument();
 
     const quickNavigation = screen.getByRole("navigation", { name: "Quick navigation" });
     expect(within(quickNavigation).getAllByRole("button").map((button) => button.textContent)).toEqual([
@@ -168,6 +169,38 @@ describe("App", () => {
     await user.click(shield);
     expect(shield).toHaveAttribute("aria-checked", "true");
     expect(shield).toHaveTextContent("Enabled");
+  });
+
+  it("records configuration changes, limits the sidebar preview, and shows the full audit history", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(sidebarLink("Team & Capacity Settings"));
+
+    const fteSlider = screen.getByLabelText("FTE Count slider");
+    for (let fte = 6; fte <= 11; fte += 1) {
+      fireEvent.change(fteSlider, { target: { value: String(fte) } });
+    }
+    await user.click(screen.getByRole("switch", { name: "Dedicated Interrupt Shield" }));
+    await showServices(user);
+    const backup = await expandService(user, "backup");
+    await user.selectOptions(within(backup).getByLabelText("Backup SLO Status"), "warning");
+
+    const audit = screen.getByRole("region", { name: "Live audit log" });
+    const recentEntries = within(audit).getByRole("list", { name: "Recent configuration changes" });
+    expect(within(recentEntries).getAllByRole("listitem")).toHaveLength(5);
+    expect(recentEntries).toHaveTextContent("Toggled Dedicated Interrupt Shield: On");
+    expect(recentEntries).toHaveTextContent("Updated Backup SLO to Degraded");
+    expect(Array.from(recentEntries.querySelectorAll("time")).every((time) => /^\d{2}:\d{2}:\d{2}$/.test(time.textContent ?? ""))).toBe(true);
+
+    await user.click(within(audit).getByRole("button", { name: "View Full Audit Log" }));
+    const dialog = screen.getByRole("dialog", { name: "Full Audit Log" });
+    const history = within(dialog).getByRole("list", { name: "Complete configuration change history" });
+    expect(within(history).getAllByRole("listitem")).toHaveLength(8);
+    expect(within(history).getAllByRole("listitem")[0]).toHaveTextContent("Updated FTE Count to 6");
+    expect(history).toHaveTextContent("Updated Backup SLO to Degraded");
+
+    await user.click(within(dialog).getByRole("button", { name: "Clear Audit Log" }));
+    expect(history).toHaveTextContent("No configuration changes yet.");
   });
 
   it("toggling automation for a service reduces its required hours", async () => {

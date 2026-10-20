@@ -1416,12 +1416,12 @@
   font: 0.68rem var(--mono);
 }
 
-.live-feed {
+.audit-log {
   padding: 0.9rem 0.65rem 0;
   border-top: 1px solid var(--border);
 }
 
-.live-feed h2 {
+.audit-log h2 {
   display: flex;
   align-items: center;
   gap: 0.45rem;
@@ -1431,17 +1431,122 @@
   letter-spacing: 0.1em;
 }
 
-.live-feed p {
+.audit-log ol {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.audit-log li {
   display: flex;
   gap: 0.45rem;
-  margin-top: 0.45rem;
   color: var(--text);
   font-size: 0.65rem;
 }
 
-.live-feed__time {
+.audit-log__time {
   color: var(--muted);
   font: 0.62rem var(--mono);
+  flex: 0 0 auto;
+}
+
+.audit-log__empty {
+  color: var(--muted) !important;
+}
+
+.audit-log__view {
+  width: 100%;
+  margin-top: 0.7rem;
+  padding: 0.35rem 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  font: 0.65rem var(--sans);
+  text-align: left;
+  cursor: pointer;
+}
+
+.audit-log__overlay {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 68%);
+}
+
+.audit-log__dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(680px, 100%);
+  max-height: min(80vh, 720px);
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-container);
+  box-shadow: 0 20px 70px rgb(0 0 0 / 48%);
+}
+
+.audit-log__dialog > header,
+.audit-log__dialog > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.audit-log__dialog > header h2 {
+  margin: 0;
+  color: var(--text-h);
+}
+
+.audit-log__dialog > header button {
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.audit-log__dialog ol {
+  display: grid;
+  gap: 0.65rem;
+  overflow-y: auto;
+  margin: 1rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.audit-log__dialog li {
+  display: flex;
+  gap: 0.8rem;
+  color: var(--text);
+}
+
+.audit-log__dialog .audit-log__time {
+  min-width: 4.5rem;
+}
+
+.audit-log__dialog footer {
+  justify-content: flex-end;
+}
+
+.audit-log__dialog footer button {
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.audit-log__dialog footer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .dashboard {
@@ -1615,7 +1720,7 @@
   }
 
   .sidebar__count,
-  .live-feed {
+  .audit-log {
     display: none;
   }
 }

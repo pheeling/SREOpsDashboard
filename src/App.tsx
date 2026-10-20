@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { DashboardProvider, useDashboard } from "./state/DashboardContext";
+import type { AuditLogEntry } from "./state/DashboardContext";
 import { GlobalConfigPanel } from "./components/GlobalConfigPanel";
 import { LoadGauge } from "./components/LoadGauge";
 import { HiringCostWidget } from "./components/HiringCostWidget";
@@ -31,6 +32,81 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
   currency: "USD",
   maximumFractionDigits: 0,
 });
+
+function AuditLog({
+  entries,
+  onClear,
+}: {
+  entries: AuditLogEntry[];
+  onClear: () => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const compactEntries = [...entries].slice(-5).reverse();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
+
+  const exportLogs = () => {
+    const blob = new Blob([JSON.stringify(entries, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "sre-audit-log.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const renderEntries = (logs: AuditLogEntry[]) =>
+    logs.length ? (
+      logs.map((entry) => (
+        <li key={entry.id}>
+          <time className="audit-log__time">{entry.timestamp}</time>
+          <span>{entry.message}</span>
+        </li>
+      ))
+    ) : (
+      <li className="audit-log__empty">No configuration changes yet.</li>
+    );
+
+  return (
+    <>
+      <section className="audit-log" aria-label="Live audit log">
+        <h2><span className="status-dot" /> LIVE AUDIT LOG</h2>
+        <ol aria-label="Recent configuration changes">{renderEntries(compactEntries)}</ol>
+        <button type="button" className="audit-log__view" onClick={() => setIsOpen(true)}>
+          View Full Audit Log
+        </button>
+      </section>
+      {isOpen && (
+        <div className="audit-log__overlay" onClick={() => setIsOpen(false)}>
+          <section
+            className="audit-log__dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="audit-log-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header>
+              <h2 id="audit-log-title">Full Audit Log</h2>
+              <button type="button" onClick={() => setIsOpen(false)} aria-label="Close audit log">×</button>
+            </header>
+            <ol aria-label="Complete configuration change history">{renderEntries(entries)}</ol>
+            <footer>
+              <button type="button" onClick={exportLogs}>Export Audit Log</button>
+              <button type="button" onClick={onClear} disabled={entries.length === 0}>Clear Audit Log</button>
+            </footer>
+          </section>
+        </div>
+      )}
+    </>
+  );
+}
 
 function ExecutiveKpis({ onViewRoiReport }: { onViewRoiReport: () => void }) {
   const { state } = useDashboard();
@@ -153,6 +229,7 @@ function ExecutiveKpis({ onViewRoiReport }: { onViewRoiReport: () => void }) {
 }
 
 function DashboardContent() {
+  const { auditLogs, clearAuditLogs } = useDashboard();
   const [activeTab, setActiveTab] = useState<DashboardTab>("summary");
   const [showSummaryReport, setShowSummaryReport] = useState(false);
   const [jump, setJump] = useState<{ targetId: string; serviceId?: string; nonce: number } | null>(null);
@@ -219,12 +296,7 @@ function DashboardContent() {
               </button>
             ))}
           </div>
-          <section className="live-feed" aria-label="Telemetry live feed">
-            <h2><span className="status-dot" /> LIVE TELEMETRY</h2>
-            <p><span className="live-feed__time">14:32:08</span> All systems operational</p>
-            <p><span className="live-feed__time">14:31:52</span> Deployment completed</p>
-            <p><span className="live-feed__time">14:30:11</span> SLO check passed</p>
-          </section>
+          <AuditLog entries={auditLogs} onClear={clearAuditLogs} />
         </aside>
 
         <main className="dashboard">
