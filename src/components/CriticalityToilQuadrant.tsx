@@ -51,7 +51,7 @@ export function CriticalityToilQuadrant({
           return (
             <section
               key={quadrant.key}
-              className={`criticality-quadrant__cell ${quadrant.key === "low-criticality-high-toil" ? "criticality-quadrant__cell--review" : ""} ${hasReliabilityDeficit ? "criticality-quadrant__cell--reliability-deficit" : ""} ${selectedQuadrantFilter === quadrant.key ? "criticality-quadrant__cell--selected" : ""}`}
+              className={`criticality-quadrant__cell ${quadrant.highToil ? "criticality-quadrant__cell--high-toil" : "criticality-quadrant__cell--low-toil"} ${quadrant.key === "low-criticality-high-toil" ? "criticality-quadrant__cell--review" : ""} ${hasReliabilityDeficit ? "criticality-quadrant__cell--reliability-deficit" : ""} ${selectedQuadrantFilter === quadrant.key ? "criticality-quadrant__cell--selected" : ""}`}
               aria-label={quadrant.title}
               data-testid={`quadrant-${quadrant.key}`}
             >

@@ -41,11 +41,14 @@ export function HiringCostWidget() {
                 <span data-testid="upskilling-hours">{dividend.hoursRecoveredPerWeek.toFixed(1)}</span> hrs/wk internally, saving{" "}
                 {currencyFormatter.format(dividend.annualizedValue)}/yr without hiring.
               </p>
-              <ul className="hiring-cost-widget__services" aria-label="Services with expertise gaps">
-                {dividend.affectedServices.map((serviceName, index) => (
-                  <li key={`${serviceName}-${index}`}>{serviceName}</li>
-                ))}
-              </ul>
+              <details className="hiring-cost-widget__service-details" open>
+                <summary>Internal onboarding / drill candidates ({dividend.affectedServices.length})</summary>
+                <ul className="hiring-cost-widget__services" aria-label="Services with expertise gaps">
+                  {dividend.affectedServices.map((serviceName, index) => (
+                    <li key={`${serviceName}-${index}`}>{serviceName}</li>
+                  ))}
+                </ul>
+              </details>
             </>
           ) : (
             <p>No active services have an expertise gap to address.</p>
