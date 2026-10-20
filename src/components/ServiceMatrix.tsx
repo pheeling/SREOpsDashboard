@@ -5,6 +5,7 @@ import { useDashboard } from "../state/DashboardContext";
 import { ServiceCard } from "./ServiceCard";
 import { getParetoToilRanking, getTotalRequiredHours } from "../engine/calculations";
 import { CriticalityToilQuadrant } from "./CriticalityToilQuadrant";
+import { getServiceQuadrantKey, type QuadrantKey } from "./serviceQuadrants";
 import { ParetoToilPanel } from "./ParetoToilPanel";
 
 export function ServiceMatrix() {
@@ -14,6 +15,17 @@ export function ServiceMatrix() {
   const [deployHours, setDeployHours] = useState("1");
   const [maintenanceHours, setMaintenanceHours] = useState("1");
   const [sloFilter, setSloFilter] = useState<"all" | "exhausted" | "at-risk">("all");
+  const [selectedQuadrantFilter, setSelectedQuadrantFilter] = useState<QuadrantKey | null>(null);
+  const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(() => new Set());
+
+  const toggleExpandedCard = (serviceId: string) => {
+    setExpandedCardIds((current) => {
+      const next = new Set(current);
+      if (next.has(serviceId)) next.delete(serviceId);
+      else next.add(serviceId);
+      return next;
+    });
+  };
 
   const handleToggleActive = (serviceId: string) => dispatch({ type: "TOGGLE_ACTIVE", serviceId });
   const handleToggleExpertise = (serviceId: string) => dispatch({ type: "TOGGLE_EXPERTISE", serviceId });
@@ -43,6 +55,9 @@ export function ServiceMatrix() {
   );
   const avgHoursPerService = activeCount > 0 ? totalRequiredHours / activeCount : 0;
   const visibleServices = state.services.filter((service) => {
+    if (selectedQuadrantFilter && (!service.isActive || getServiceQuadrantKey(service) !== selectedQuadrantFilter)) {
+      return false;
+    }
     if (sloFilter === "all") return true;
     if (!service.isActive) return false;
     return sloFilter === "exhausted"
@@ -150,8 +165,26 @@ export function ServiceMatrix() {
         </select>
       </label>
 
-      <CriticalityToilQuadrant services={state.services} />
+      <CriticalityToilQuadrant
+        services={state.services}
+        selectedQuadrantFilter={selectedQuadrantFilter}
+        onSelectQuadrant={(quadrant) =>
+          setSelectedQuadrantFilter((current) => (current === quadrant ? null : quadrant))
+        }
+      />
       <ParetoToilPanel />
+
+      <div className="service-matrix__list-toolbar">
+        <h3>Service Breakdown</h3>
+        <button
+          type="button"
+          className={`service-matrix__all-filter ${selectedQuadrantFilter === null ? "service-matrix__all-filter--active" : ""}`}
+          aria-pressed={selectedQuadrantFilter === null}
+          onClick={() => setSelectedQuadrantFilter(null)}
+        >
+          All Services
+        </button>
+      </div>
 
       {state.services.length === 0 ? (
         <div className="service-matrix__empty" data-testid="services-empty-state">
@@ -168,7 +201,7 @@ export function ServiceMatrix() {
       ) : (
         visibleServices.length === 0 ? (
           <p className="service-matrix__filtered-empty" data-testid="services-filter-empty">
-            No active services match this SLO status.
+            No services match the selected filters.
           </p>
         ) : (
           <div className="service-matrix__grid">
@@ -176,6 +209,8 @@ export function ServiceMatrix() {
               <ServiceCard
                 key={service.id}
                 service={service}
+                isExpanded={expandedCardIds.has(service.id)}
+                onToggleExpanded={toggleExpandedCard}
                 isTopToilContributor={topToilIds.has(service.id)}
                 onToggleActive={handleToggleActive}
                 onToggleExpertise={handleToggleExpertise}

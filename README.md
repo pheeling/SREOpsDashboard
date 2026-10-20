@@ -76,11 +76,12 @@ npm run preview
 
 ## Use the dashboard
 
-1. **Set team assumptions** in Team Configuration: FTE count, weekly hours per FTE, effective capacity percentage, and annual salary baseline. The initial values are 5 FTE, 40 hours per week, 80% effective capacity, and $150,000 annual salary.
-2. **Review the Service Matrix.** It starts with 19 active example services. Set each service's deployment and maintenance estimates in hours per week; these are added to calculate its base workload.
-3. **Adjust service assumptions.** Deactivate services that are not in scope, toggle Automated where toil has been automated, toggle Expertise off when the team lacks in-house expertise, change Ownership to reflect who carries the toil, and change Criticality Weight to reflect blast radius. Toggle PRR Approved when readiness requirements are not met.
-4. **Manage the catalog.** Add a custom service with a name and weekly deployment and maintenance estimates, delete individual services, or use Delete All to clear the catalog. Restore Default Services repopulates the standard catalog; it does not reset Team Configuration.
-5. **Review the results.** The dashboard shows capacity buckets, operational load, modeled hiring cost, and warnings. Use View Automation ROI Summary Report to compare modeled weekly hours saved and annualized savings for active services that are not yet automated.
+1. **Review Executive Summary.** The default tab shows operational load, upskilling value, and a headcount recommendation alongside the hiring-versus-upskilling financial comparison. Use View Automation ROI Summary Report for service-level automation savings.
+2. **Set team assumptions** in Team & Capacity Settings. Adjust the FTE count, weekly hours, effective capacity, and salary; toggle the interrupt shield. The initial values are 5 FTE, 40 hours per week, 80% effective capacity, and $150,000 annual salary.
+3. **Review Service Breakdown & Toil Analysis.** It starts with 19 active example services. Click a Criticality vs. Toil quadrant to filter the service list, or choose All Services to clear the quadrant filter. Service cards are collapsed by default; expand a card to edit its service settings.
+4. **Adjust service assumptions.** In an expanded card, deactivate services that are not in scope, toggle Automated where toil has been automated, toggle Expertise off when the team lacks in-house expertise, change Ownership to reflect who carries the toil, and change Criticality Weight to reflect blast radius. Toggle PRR Approved when readiness requirements are not met.
+5. **Manage the catalog.** Add a custom service with a name and weekly deployment and maintenance estimates, delete individual services from their expanded card, or use Delete All to clear the catalog. Restore Default Services repopulates the standard catalog; it does not reset Team Configuration.
+6. **Review the analysis.** The service tab shows capacity buckets, operational load, and warnings; team settings and service assumptions remain available when switching tabs.
 
 ## Grounding Estimates in Operational Telemetry
 

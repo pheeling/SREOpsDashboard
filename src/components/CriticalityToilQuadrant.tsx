@@ -1,18 +1,32 @@
+import type { KeyboardEvent } from "react";
 import type { Service } from "../engine/types";
-import { getRequiredHours, getServiceWeight } from "../engine/calculations";
+import { getRequiredHours } from "../engine/calculations";
+import { getServiceQuadrantKey, type QuadrantKey } from "./serviceQuadrants";
+export type { QuadrantKey } from "./serviceQuadrants";
 
 interface CriticalityToilQuadrantProps {
   services: Service[];
+  selectedQuadrantFilter: QuadrantKey | null;
+  onSelectQuadrant: (quadrant: QuadrantKey) => void;
 }
 
-const quadrants = [
+const quadrants: {
+  key: QuadrantKey;
+  title: string;
+  highCriticality: boolean;
+  highToil: boolean;
+}[] = [
   { key: "low-criticality-high-toil", title: "Low criticality · High toil", highCriticality: false, highToil: true },
   { key: "high-criticality-high-toil", title: "High criticality · High toil", highCriticality: true, highToil: true },
   { key: "low-criticality-low-toil", title: "Low criticality · Low toil", highCriticality: false, highToil: false },
   { key: "high-criticality-low-toil", title: "High criticality · Low toil", highCriticality: true, highToil: false },
 ];
 
-export function CriticalityToilQuadrant({ services }: CriticalityToilQuadrantProps) {
+export function CriticalityToilQuadrant({
+  services,
+  selectedQuadrantFilter,
+  onSelectQuadrant,
+}: CriticalityToilQuadrantProps) {
   const activeServices = services.filter((service) => service.isActive);
 
   return (
@@ -23,46 +37,59 @@ export function CriticalityToilQuadrant({ services }: CriticalityToilQuadrantPro
       </p>
       <div className="criticality-quadrant__grid">
         {quadrants.map((quadrant) => {
-          const matches = activeServices.filter((service) => {
-            const highCriticality = getServiceWeight(service) > 1;
-            const highToil = getRequiredHours(service) > 5;
-            return highCriticality === quadrant.highCriticality && highToil === quadrant.highToil;
-          });
+          const matches = activeServices.filter((service) => getServiceQuadrantKey(service) === quadrant.key);
           const hasReliabilityDeficit =
             quadrant.key === "high-criticality-high-toil" &&
             matches.some((service) => service.sloStatus === "exhausted");
+          const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onSelectQuadrant(quadrant.key);
+            }
+          };
 
           return (
             <section
               key={quadrant.key}
-              className={`criticality-quadrant__cell ${quadrant.key === "low-criticality-high-toil" ? "criticality-quadrant__cell--review" : ""} ${hasReliabilityDeficit ? "criticality-quadrant__cell--reliability-deficit" : ""}`}
+              className={`criticality-quadrant__cell ${quadrant.key === "low-criticality-high-toil" ? "criticality-quadrant__cell--review" : ""} ${hasReliabilityDeficit ? "criticality-quadrant__cell--reliability-deficit" : ""} ${selectedQuadrantFilter === quadrant.key ? "criticality-quadrant__cell--selected" : ""}`}
               aria-label={quadrant.title}
+              data-testid={`quadrant-${quadrant.key}`}
             >
-              <h4>{quadrant.title}</h4>
-              {quadrant.key === "low-criticality-high-toil" && (
-                <p className="criticality-quadrant__advisory">
-                  Candidates for Deprecation, SaaS Replacement, or Immediate Dev Handback
-                </p>
-              )}
-              {hasReliabilityDeficit && (
-                <p className="criticality-quadrant__reliability-warning" data-testid="critical-reliability-deficit">
-                  Critical Reliability Deficit: Feature Freeze Recommended
-                </p>
-              )}
-              {matches.length > 0 ? (
-                <ul>
-                  {matches.map((service) => (
-                    <li
-                      key={service.id}
-                      className={hasReliabilityDeficit && service.sloStatus === "exhausted" ? "criticality-quadrant__service--exhausted" : ""}
-                    >
-                      {service.name} <span>{getRequiredHours(service).toFixed(1)} hrs/wk</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="criticality-quadrant__empty">No active services</p>
-              )}
+              <div
+                className="criticality-quadrant__filter"
+                role="button"
+                tabIndex={0}
+                aria-pressed={selectedQuadrantFilter === quadrant.key}
+                onClick={() => onSelectQuadrant(quadrant.key)}
+                onKeyDown={onKeyDown}
+              >
+                <h4>{quadrant.title}</h4>
+                <span>{matches.length} services · Filter list</span>
+                {quadrant.key === "low-criticality-high-toil" && (
+                  <p className="criticality-quadrant__advisory">
+                    Candidates for Deprecation, SaaS Replacement, or Immediate Dev Handback
+                  </p>
+                )}
+                {hasReliabilityDeficit && (
+                  <p className="criticality-quadrant__reliability-warning" data-testid="critical-reliability-deficit">
+                    Critical Reliability Deficit: Feature Freeze Recommended
+                  </p>
+                )}
+                {matches.length > 0 ? (
+                  <ul>
+                    {matches.map((service) => (
+                      <li
+                        key={service.id}
+                        className={hasReliabilityDeficit && service.sloStatus === "exhausted" ? "criticality-quadrant__service--exhausted" : ""}
+                      >
+                        {service.name} <span>{getRequiredHours(service).toFixed(1)} hrs/wk</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="criticality-quadrant__empty">No active services</p>
+                )}
+              </div>
             </section>
           );
         })}
