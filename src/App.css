@@ -489,6 +489,14 @@
   background: #fff;
 }
 
+.criticality-quadrant__cell--high-toil {
+  border-color: #F59E0B;
+}
+
+.criticality-quadrant__cell--low-toil {
+  border-color: #10B981;
+}
+
 .criticality-quadrant__cell--selected {
   outline: 3px solid #3182ce;
   outline-offset: 1px;

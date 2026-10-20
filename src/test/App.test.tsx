@@ -262,6 +262,8 @@ describe("App", () => {
     const reviewCell = within(quadrant).getByRole("region", { name: "Low criticality · High toil" });
     expect(within(reviewCell).getByText(/Candidates for Deprecation, SaaS Replacement, or Immediate Dev Handback/)).toBeInTheDocument();
     expect(within(reviewCell).getByText(/Backup/)).toBeInTheDocument();
+    expect(screen.getByTestId("quadrant-low-criticality-high-toil")).toHaveClass("criticality-quadrant__cell--high-toil");
+    expect(screen.getByTestId("quadrant-high-criticality-low-toil")).toHaveClass("criticality-quadrant__cell--low-toil");
     expect(within(quadrant).getByRole("region", { name: "High criticality · High toil" })).toHaveTextContent("Databases");
   });
 
@@ -281,6 +283,12 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Executive Summary" }));
     expect(screen.getByTestId("kpi-upskilling-hours")).toHaveTextContent(/\d+\.\d/);
     expect(screen.getByTestId("kpi-upskilling-value")).not.toHaveTextContent("$0/yr");
+    expect(screen.getByRole("list", { name: "Services with expertise gaps" })).toHaveTextContent("Databases");
+    const onboardingDetails = screen.getByText(/Internal onboarding \/ drill candidates/);
+    await user.click(onboardingDetails);
+    expect(onboardingDetails.parentElement).not.toHaveAttribute("open");
+    await user.click(onboardingDetails);
+    expect(onboardingDetails.parentElement).toHaveAttribute("open");
     expect(screen.getByRole("list", { name: "Services with expertise gaps" })).toHaveTextContent("Databases");
 
     await user.click(screen.getByRole("button", { name: "Service Breakdown & Toil Analysis" }));
