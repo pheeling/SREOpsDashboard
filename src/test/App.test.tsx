@@ -19,6 +19,26 @@ describe("App", () => {
     window.localStorage.clear();
   });
 
+  it("renders the Obsidian telemetry shell and switches from the mobile quick navigation", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(document.querySelector(".topbar")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Obsidian Telemetry home" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Cluster")).toHaveValue("production-us-east-1");
+    expect(screen.getByLabelText("System status: 99.992% SLO")).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "Main navigation" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Telemetry live feed" })).toBeInTheDocument();
+
+    const quickNavigation = screen.getByRole("navigation", { name: "Quick navigation" });
+    await user.click(within(quickNavigation).getByRole("button", { name: "Topology" }));
+    expect(within(quickNavigation).getByRole("button", { name: "Topology" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("region", { name: "Service Breakdown and Toil Analysis" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Pager On" }));
+    expect(screen.getByRole("button", { name: "Pager Off" })).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("defaults to the executive summary with dynamic KPI cards and financial impact", () => {
     render(<App />);
 

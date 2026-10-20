@@ -85,13 +85,19 @@ function ExecutiveKpis() {
 
 function DashboardContent() {
   const [activeTab, setActiveTab] = useState<DashboardTab>("summary");
+  const [activeQuickTab, setActiveQuickTab] = useState<QuickTab>("overview");
   const [showSummaryReport, setShowSummaryReport] = useState(false);
   const [pagerEnabled, setPagerEnabled] = useState(true);
-  const activeQuickTab: QuickTab =
-    activeTab === "summary" ? "overview" : activeTab === "team" ? "slo-costs" : "incidents";
 
   const selectTab = (tab: DashboardTab) => {
     setActiveTab(tab);
+    setActiveQuickTab(tab === "summary" ? "overview" : tab === "team" ? "slo-costs" : "incidents");
+    setShowSummaryReport(false);
+  };
+
+  const selectQuickTab = (tab: QuickTab) => {
+    setActiveQuickTab(tab);
+    setActiveTab(dashboardTabForQuickTab[tab]);
     setShowSummaryReport(false);
   };
 
@@ -245,7 +251,7 @@ function DashboardContent() {
             type="button"
             className={activeQuickTab === id ? "mobile-nav__item mobile-nav__item--active" : "mobile-nav__item"}
             aria-current={activeQuickTab === id ? "page" : undefined}
-            onClick={() => selectTab(dashboardTabForQuickTab[id])}
+            onClick={() => selectQuickTab(id)}
           >
             <span className="mobile-nav__icon" aria-hidden="true">{icon}</span>
             <span>{label}</span>
