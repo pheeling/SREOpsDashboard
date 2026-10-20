@@ -19,16 +19,59 @@ describe("App", () => {
     window.localStorage.clear();
   });
 
+  it("renders the Obsidian telemetry shell and switches from the mobile quick navigation", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(document.querySelector(".topbar")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Obsidian Telemetry home" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Cluster")).toHaveValue("production-us-east-1");
+    expect(screen.getByLabelText("System status: 99.992% SLO")).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "Main navigation" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Telemetry live feed" })).toBeInTheDocument();
+
+    const quickNavigation = screen.getByRole("navigation", { name: "Quick navigation" });
+    await user.click(within(quickNavigation).getByRole("button", { name: "Topology" }));
+    expect(within(quickNavigation).getByRole("button", { name: "Topology" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("region", { name: "Service Breakdown and Toil Analysis" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Pager On" }));
+    expect(screen.getByRole("button", { name: "Pager Off" })).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("defaults to the executive summary with dynamic KPI cards and financial impact", () => {
     render(<App />);
 
     expect(screen.getByRole("navigation", { name: "Dashboard sections" })).toBeInTheDocument();
     expect(screen.getByTestId("kpi-operational-load")).toBeInTheDocument();
     expect(screen.getByTestId("kpi-upskilling-value")).toHaveTextContent("$0/yr");
-    expect(screen.getByTestId("kpi-headcount")).toHaveTextContent(/\d+ External Hires Required/);
+    expect(screen.getByTestId("kpi-operational-hours")).toHaveTextContent(/hrs toward operational work/);
+    expect(screen.getByTestId("kpi-active-services")).toHaveTextContent("19/19 Active");
+    expect(screen.getByTestId("kpi-prr-count")).toHaveTextContent("19 PRR approved · 0 deficient");
+    expect(screen.getByTestId("kpi-slo-health")).toHaveTextContent("100.0%");
+    expect(screen.getByTestId("kpi-slo-status")).toHaveTextContent("HEALTHY");
     expect(screen.getByTestId("hiring-cost-widget")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View Automation ROI Summary Report" })).toBeInTheDocument();
     expect(screen.queryByTestId("load-gauge")).not.toBeInTheDocument();
     expect(screen.queryByTestId("staffing-warning")).not.toBeInTheDocument();
+  });
+
+  it("updates the readiness and SLO KPIs from active service state", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await showServices(user);
+
+    const database = await expandService(user, "databases");
+    await user.click(within(database).getByLabelText("Databases PRR Approved"));
+    await user.selectOptions(within(database).getByLabelText("Databases SLO Status"), "exhausted");
+
+    await user.click(screen.getByRole("button", { name: "Executive Summary" }));
+
+    expect(screen.getByTestId("kpi-prr-status")).toHaveTextContent("DEFICIENT");
+    expect(screen.getByTestId("kpi-prr-count")).toHaveTextContent("18 PRR approved · 1 deficient");
+    expect(screen.getByTestId("kpi-slo-health")).toHaveTextContent("94.7%");
+    expect(screen.getByTestId("kpi-slo-status")).toHaveTextContent("CRITICAL");
+    expect(screen.getByTestId("kpi-slo-counts")).toHaveTextContent("18 healthy · 0 at risk · 1 exhausted");
   });
 
   it("warns when the configured team has fewer than four engineers", async () => {
