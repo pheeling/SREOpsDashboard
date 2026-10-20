@@ -14,20 +14,11 @@ import { calculateUpskillingDividend, computeCapacityReport } from "./engine/cal
 import "./App.css";
 
 type DashboardTab = "summary" | "team" | "services";
-type QuickTab = "overview" | "incidents" | "topology" | "slo-costs";
 
-const dashboardTabForQuickTab: Record<QuickTab, DashboardTab> = {
-  overview: "summary",
-  incidents: "services",
-  topology: "services",
-  "slo-costs": "team",
-};
-
-const quickTabs: { id: QuickTab; label: string; icon: string }[] = [
-  { id: "overview", label: "Overview", icon: "◫" },
-  { id: "incidents", label: "Incidents", icon: "!" },
-  { id: "topology", label: "Topology", icon: "◎" },
-  { id: "slo-costs", label: "SLO/Costs", icon: "⌁" },
+const dashboardTabs: { id: DashboardTab; label: string; shortLabel: string; icon: string }[] = [
+  { id: "summary", label: "Executive Summary", shortLabel: "Executive Summary", icon: "◫" },
+  { id: "team", label: "Team & Capacity Settings", shortLabel: "Team & Capacity", icon: "◷" },
+  { id: "services", label: "Service Breakdown & Toil Analysis", shortLabel: "Service Breakdown", icon: "⌁" },
 ];
 
 const HIGHLIGHT_CLASS = "search-highlight";
@@ -163,7 +154,6 @@ function ExecutiveKpis({ onViewRoiReport }: { onViewRoiReport: () => void }) {
 
 function DashboardContent() {
   const [activeTab, setActiveTab] = useState<DashboardTab>("summary");
-  const [activeQuickTab, setActiveQuickTab] = useState<QuickTab>("overview");
   const [showSummaryReport, setShowSummaryReport] = useState(false);
   const [pagerEnabled, setPagerEnabled] = useState(true);
   const [jump, setJump] = useState<{ targetId: string; serviceId?: string; nonce: number } | null>(null);
@@ -203,13 +193,6 @@ function DashboardContent() {
 
   const selectTab = (tab: DashboardTab) => {
     setActiveTab(tab);
-    setActiveQuickTab(tab === "summary" ? "overview" : tab === "team" ? "slo-costs" : "incidents");
-    setShowSummaryReport(false);
-  };
-
-  const selectQuickTab = (tab: QuickTab) => {
-    setActiveQuickTab(tab);
-    setActiveTab(dashboardTabForQuickTab[tab]);
     setShowSummaryReport(false);
   };
 
@@ -259,21 +242,17 @@ function DashboardContent() {
       <div className="app-layout">
         <aside className="sidebar" aria-label="Main navigation">
           <div className="sidebar__navigation">
-            <details open>
-              <summary>WORKSPACE</summary>
-              <button type="button" className={activeTab === "summary" ? "sidebar__link sidebar__link--active" : "sidebar__link"} onClick={() => selectTab("summary")}><span>◫</span> Overview</button>
-              <button type="button" className={activeTab === "services" ? "sidebar__link sidebar__link--active" : "sidebar__link"} onClick={() => selectTab("services")}><span>⌁</span> Service health</button>
-            </details>
-            <details open>
-              <summary>OBSERVABILITY</summary>
-              <button type="button" className="sidebar__link" onClick={() => selectTab("services")}><span>◎</span> Topology</button>
-              <button type="button" className="sidebar__link" onClick={() => selectTab("services")}><span>⌁</span> SLO &amp; error budgets</button>
-              <button type="button" className="sidebar__link" onClick={() => selectTab("services")}><span>◉</span> Incidents <span className="sidebar__count">2</span></button>
-            </details>
-            <details open>
-              <summary>MANAGEMENT</summary>
-              <button type="button" className={activeTab === "team" ? "sidebar__link sidebar__link--active" : "sidebar__link"} onClick={() => selectTab("team")}><span>◷</span> Capacity &amp; costs</button>
-            </details>
+            {dashboardTabs.map(({ id, label, icon }) => (
+              <button
+                key={id}
+                type="button"
+                className={activeTab === id ? "sidebar__link sidebar__link--active" : "sidebar__link"}
+                aria-current={activeTab === id ? "page" : undefined}
+                onClick={() => selectTab(id)}
+              >
+                <span aria-hidden="true">{icon}</span> {label}
+              </button>
+            ))}
           </div>
           <section className="live-feed" aria-label="Telemetry live feed">
             <h2><span className="status-dot" /> LIVE TELEMETRY</h2>
@@ -288,26 +267,6 @@ function DashboardContent() {
         <h1>SRE Infrastructure Complexity &amp; Operational Capacity Calculator</h1>
         <p>Quantify operational toil and keep it under the 50% SRE capacity threshold.</p>
       </header>
-
-      <nav className="dashboard-tabs" aria-label="Dashboard sections">
-        {(
-          [
-            ["summary", "Executive Summary"],
-            ["team", "Team & Capacity Settings"],
-            ["services", "Service Breakdown & Toil Analysis"],
-          ] as const
-        ).map(([tab, label]) => (
-          <button
-            key={tab}
-            type="button"
-            className={`dashboard-tabs__tab ${activeTab === tab ? "dashboard-tabs__tab--active" : ""}`}
-            aria-current={activeTab === tab ? "page" : undefined}
-            onClick={() => selectTab(tab)}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
 
       <WarningBanner />
 
@@ -345,16 +304,16 @@ function DashboardContent() {
       </div>
 
       <nav className="mobile-nav" aria-label="Quick navigation">
-        {quickTabs.map(({ id, label, icon }) => (
+        {dashboardTabs.map(({ id, shortLabel, icon }) => (
           <button
             key={id}
             type="button"
-            className={activeQuickTab === id ? "mobile-nav__item mobile-nav__item--active" : "mobile-nav__item"}
-            aria-current={activeQuickTab === id ? "page" : undefined}
-            onClick={() => selectQuickTab(id)}
+            className={activeTab === id ? "mobile-nav__item mobile-nav__item--active" : "mobile-nav__item"}
+            aria-current={activeTab === id ? "page" : undefined}
+            onClick={() => selectTab(id)}
           >
             <span className="mobile-nav__icon" aria-hidden="true">{icon}</span>
-            <span>{label}</span>
+            <span>{shortLabel}</span>
           </button>
         ))}
       </nav>
