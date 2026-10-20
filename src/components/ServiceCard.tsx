@@ -34,35 +34,58 @@ export function ServiceCard({
   const baseHours = getBaseHours(service);
   const weight = service.weight ?? 1;
   const detailsId = `service-details-${service.id}`;
+  const ownershipModel = getOwnershipModel(service);
+  const ownershipLabel = ownershipModel === "sre_full" ? "SRE Owned" : OWNERSHIP_LABELS[ownershipModel];
+  const sloStatusLabel =
+    service.sloStatus === "healthy"
+      ? "Healthy · ≥20% remaining"
+      : service.sloStatus === "warning"
+        ? "Warning · <20% remaining"
+        : "Exhausted · depleted";
 
   return (
     <article
       className={`service-card ${service.isActive ? "service-card--active" : "service-card--inactive"} ${service.sloStatus === "exhausted" ? "service-card--slo-exhausted" : ""} ${isExpanded ? "service-card--expanded" : ""}`}
       data-testid={`service-card-${service.id}`}
     >
-      <button
-        type="button"
-        className="service-card__summary"
-        aria-expanded={isExpanded}
-        aria-controls={detailsId}
-        onClick={() => onToggleExpanded(service.id)}
-      >
-        <span className="service-card__summary-main">
-          <span className="service-card__name">{service.name}</span>
-          <span className={`service-card__badge ${service.isActive ? "service-card__badge--active" : ""}`}>
-            {service.isActive ? requiredHours.toFixed(2) : "0.00"} hrs/wk
+      <div className="service-card__overview">
+        <button
+          type="button"
+          className="service-card__summary"
+          aria-expanded={isExpanded}
+          aria-controls={detailsId}
+          onClick={() => onToggleExpanded(service.id)}
+        >
+          <span className="service-card__summary-main">
+            <span className="service-card__name">{service.name}</span>
+            <span className="service-card__ownership">{ownershipLabel}</span>
+            <span className="service-card__expand-indicator" aria-hidden="true">{isExpanded ? "−" : "+"}</span>
           </span>
-        </span>
-        <span className="service-card__summary-status">
-          <span className={`service-card__prr-badge ${service.prrApproved ? "service-card__prr-badge--approved" : "service-card__prr-badge--deficient"}`}>
-            PRR {service.prrApproved ? "Approved" : "Deficient"}
+          <span className="service-card__hours">
+            <span className={`service-card__badge ${service.isActive ? "service-card__badge--active" : ""}`}>
+              {service.isActive ? requiredHours.toFixed(2) : "0.00"} hrs/wk
+            </span>
           </span>
-          <span className={`slo-status-badge slo-status-badge--${service.sloStatus}`}>
-            SLO {service.sloStatus === "healthy" ? "Healthy" : service.sloStatus === "warning" ? "Warning" : "Exhausted"}
+          <span className="service-card__summary-prr">
+            <span className={`service-card__prr-badge ${service.prrApproved ? "service-card__prr-badge--approved" : "service-card__prr-badge--deficient"}`}>
+              PRR {service.prrApproved ? "Approved" : "Deficient"}
+            </span>
           </span>
-        </span>
-        <span className="service-card__expand-indicator" aria-hidden="true">{isExpanded ? "−" : "+"}</span>
-      </button>
+          <span className="service-card__summary-slo">
+            <span className={`slo-status-badge slo-status-badge--${service.sloStatus}`}>{sloStatusLabel}</span>
+          </span>
+        </button>
+        <label className={`service-card__automation ${service.isAutomated ? "service-card__automation--on" : ""}`}>
+          <input
+            type="checkbox"
+            checked={service.isAutomated}
+            disabled={!service.isActive}
+            onChange={() => onToggleAutomation(service.id)}
+            aria-label={`${service.name} Automation`}
+          />
+          Automated
+        </label>
+      </div>
 
       <div
         id={detailsId}
@@ -115,16 +138,6 @@ export function ServiceCard({
           <p className="service-card__base-hours">Base: {baseHours.toFixed(1)} hrs/wk</p>
 
           <div className="service-card__toggles">
-            <label className={`service-card__toggle ${service.isAutomated ? "service-card__toggle--on" : ""}`}>
-              <input
-                type="checkbox"
-                checked={service.isAutomated}
-                disabled={!service.isActive}
-                onChange={() => onToggleAutomation(service.id)}
-                aria-label={`${service.name} Automation`}
-              />
-              Automated
-            </label>
             <label className={`service-card__toggle ${service.hasExpertise ? "service-card__toggle--on" : ""}`}>
               <input
                 type="checkbox"

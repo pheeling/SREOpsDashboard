@@ -422,13 +422,26 @@
 }
 
 /* --- Capacity Buckets Chart --- */
+.capacity-chart,
+.service-matrix {
+  border: 1px solid #1e293b;
+  background: #171b26;
+  color: #cbd5e1;
+}
+
+.capacity-chart h2,
+.service-matrix h2,
+.service-matrix h3 {
+  color: #f8fafc;
+}
+
 .capacity-chart__bar {
   display: flex;
   width: 100%;
   height: 28px;
   border-radius: 6px;
   overflow: hidden;
-  background: #e2e8f0;
+  background: #1e293b;
   margin-bottom: 1rem;
 }
 
@@ -465,8 +478,25 @@
 }
 
 .capacity-chart__legend-value {
-  color: #57606a;
+  color: #cbd5e1;
   font-variant-numeric: tabular-nums;
+}
+
+.capacity-chart__legend-value,
+.capacity-chart__overhead,
+.capacity-chart__shield,
+.service-card__badge,
+.service-card__ownership,
+.service-card__prr-badge,
+.slo-status-badge {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.capacity-chart__overhead,
+.capacity-chart__shield {
+  margin: 0 0 0.75rem;
+  color: #cbd5e1;
+  font-size: 0.85rem;
 }
 
 /* --- Service Matrix --- */
@@ -481,7 +511,7 @@
 .service-matrix__scaling-note {
   flex-basis: 100%;
   font-size: 0.8rem;
-  color: #57606a;
+  color: #94a3b8;
   margin: 0;
 }
 
@@ -530,9 +560,24 @@
 
 .service-matrix__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
-  gap: 0.9rem;
-  margin-top: 1rem;
+  gap: 0.5rem;
+}
+
+.service-matrix__columns,
+.service-card__overview {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1.8fr) minmax(7rem, 0.8fr) minmax(8rem, 0.95fr) minmax(12rem, 1.4fr) minmax(7rem, 0.8fr);
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.service-matrix__columns {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid #1e293b;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .service-matrix__slo-filter {
@@ -669,15 +714,16 @@
   min-width: 0;
   padding: 0.75rem;
   border-radius: 8px;
-  border: 1px solid #d0d7de;
+  border: 1px solid #1e293b;
   transition: opacity 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .service-card__summary {
-  display: flex;
+  display: grid;
+  grid-column: 1 / 5;
+  grid-template-columns: minmax(12rem, 1.8fr) minmax(7rem, 0.8fr) minmax(8rem, 0.95fr) minmax(12rem, 1.4fr);
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.75rem;
   width: 100%;
   min-height: 44px;
   padding: 0;
@@ -698,15 +744,58 @@
   min-width: 0;
 }
 
-.service-card__summary-status {
-  justify-content: flex-end;
+.service-card__summary-main {
+  position: relative;
+  padding-right: 1.25rem;
+}
+
+.service-card__hours,
+.service-card__summary-prr,
+.service-card__summary-slo {
+  min-width: 0;
+}
+
+.service-card__summary-slo .slo-status-badge {
+  white-space: normal;
 }
 
 .service-card__expand-indicator {
-  flex: 0 0 auto;
+  position: absolute;
+  right: 0;
   color: #57606a;
   font-size: 1.2rem;
   font-weight: 700;
+}
+
+.service-card__ownership {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid #334155;
+  border-radius: 999px;
+  color: #cbd5e1;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.service-card__automation {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.service-card__automation input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: #2f855a;
+}
+
+.service-card__automation--on {
+  color: #86efac;
 }
 
 .service-card__details {
@@ -744,20 +833,20 @@
 }
 
 .service-card--active {
-  background: #f0fff4;
-  border-color: #2f855a;
-  box-shadow: 0 0 0 1px rgba(47, 133, 90, 0.25);
+  background: #171b26;
+  border-color: #1e293b;
+  box-shadow: none;
 }
 
 .service-card--inactive {
-  background: #f6f8fa;
+  background: #171b26;
   opacity: 0.5;
   filter: grayscale(0.6);
 }
 
 .service-card--slo-exhausted {
-  border-color: #c53030;
-  background: #fff5f5;
+  border-color: #7f1d1d;
+  background: #221922;
   box-shadow: 0 0 0 1px rgba(197, 48, 48, 0.25);
 }
 
@@ -779,6 +868,7 @@
   margin: 0;
   font-size: 0.95rem;
   font-weight: 700;
+  color: #f8fafc;
 }
 
 .service-card__badge {
@@ -798,7 +888,7 @@
 
 .service-card__muted-note {
   font-size: 0.75rem;
-  color: #8a8f98;
+  color: #94a3b8;
   margin: 0.25rem 0 0;
 }
 
@@ -1024,6 +1114,19 @@
   font-weight: 700;
 }
 
+@media (min-width: 768px) and (max-width: 1023px) {
+  .service-matrix__columns,
+  .service-card__overview {
+    grid-template-columns: minmax(9rem, 1.4fr) minmax(6rem, 0.8fr) minmax(7rem, 0.95fr) minmax(9rem, 1.4fr) minmax(6rem, 0.8fr);
+    gap: 0.5rem;
+  }
+
+  .service-card__summary {
+    grid-template-columns: minmax(9rem, 1.4fr) minmax(6rem, 0.8fr) minmax(7rem, 0.95fr) minmax(9rem, 1.4fr);
+    gap: 0.5rem;
+  }
+}
+
 @media (min-width: 768px) {
   .executive-kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1036,7 +1139,7 @@
   }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 767px) {
   .dashboard-tabs,
   .executive-kpis {
     grid-template-columns: minmax(0, 1fr);
@@ -1047,14 +1150,49 @@
     text-align: left;
   }
 
+  .service-matrix__columns {
+    display: none;
+  }
+
+  .service-matrix__grid {
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .service-card__overview {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.4rem;
+  }
+
   .service-card__summary {
+    grid-column: 1;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.4rem 0.75rem;
+    align-items: center;
+  }
+
+  .service-card__summary-main {
+    grid-column: 1;
+    flex-direction: column;
     align-items: flex-start;
   }
 
-  .service-card__summary-main,
-  .service-card__summary-status {
-    flex-direction: column;
-    align-items: flex-start;
+  .service-card__hours {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .service-card__summary-prr {
+    grid-column: 1;
+  }
+
+  .service-card__summary-slo {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .service-card__automation {
+    width: fit-content;
   }
 }
 
