@@ -14,6 +14,17 @@
   --error: #ffb4ab;
   --success: #5de2a2;
   --warning: #f5c96b;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
   --code-bg: var(--surface-container);
   --accent: var(--primary);
   --accent-bg: rgb(0 240 255 / 10%);
