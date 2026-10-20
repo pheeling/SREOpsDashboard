@@ -27,7 +27,7 @@ export function CapacityBucketsChart() {
   });
 
   return (
-    <section className="dashboard-card capacity-chart" aria-label="Error Budget Buckets" data-testid="capacity-chart">
+    <section className="dashboard-card capacity-chart" aria-label="Error Budget Buckets" data-testid="capacity-chart" id="search-target-error-budget-buckets">
       <h2>Error Budget Buckets</h2>
       <div
         className="capacity-chart__bar"
