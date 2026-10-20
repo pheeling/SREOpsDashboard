@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { DashboardProvider, useDashboard } from "./state/DashboardContext";
 import type { AuditLogEntry } from "./state/DashboardContext";
 import { GlobalConfigPanel } from "./components/GlobalConfigPanel";
@@ -49,7 +50,12 @@ function AuditLog({
       if (event.key === "Escape") setIsOpen(false);
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
   }, [isOpen]);
 
   const exportLogs = () => {
@@ -83,7 +89,7 @@ function AuditLog({
           View Full Audit Log
         </button>
       </section>
-      {isOpen && (
+      {isOpen && createPortal(
         <div className="audit-log__overlay" onClick={() => setIsOpen(false)}>
           <section
             className="audit-log__dialog"
@@ -102,7 +108,8 @@ function AuditLog({
               <button type="button" onClick={onClear} disabled={entries.length === 0}>Clear Audit Log</button>
             </footer>
           </section>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
