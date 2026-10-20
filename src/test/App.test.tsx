@@ -478,3 +478,51 @@ describe("Pareto toil & stabilization sprint", () => {
     expect(screen.queryByTestId("stabilization-scenario")).not.toBeInTheDocument();
   });
 });
+
+describe("Global search", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("fuzzy matches misspelled queries and supports keyboard navigation", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const input = screen.getByRole("combobox", { name: "Search telemetry" });
+
+    await user.type(input, "salry");
+    expect(screen.getByRole("option", { name: /Annual Salary Baseline/ })).toBeInTheDocument();
+    await user.clear(input);
+    await user.type(input, "opration");
+    expect(within(screen.getByRole("listbox", { name: "Search results" })).getAllByRole("option")[0]).toHaveTextContent(/Operational Load/);
+    await user.clear(input);
+    await user.type(input, "maintnance");
+    expect(screen.getByRole("option", { name: /Error Budget Buckets/ })).toBeInTheDocument();
+    await user.clear(input);
+    await user.type(input, "bakup");
+    expect(screen.getByRole("option", { name: /Backup/ })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("jumps to a collapsed service card, expands it and highlights it", async () => {
+    const user = userEvent.setup();
+    const scrollIntoView = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    render(<App />);
+
+    await user.type(screen.getByRole("combobox", { name: "Search telemetry" }), "backp{Enter}");
+
+    const card = await screen.findByTestId("service-card-backup");
+    await vi.waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "center" }));
+    expect(card).toHaveClass("search-highlight");
+    expect(within(card).getByRole("button", { name: /hrs\/wk/ })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("switches tabs when selecting an input on another tab", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByRole("combobox", { name: "Search telemetry" }), "salry");
+    await user.click(screen.getByRole("option", { name: /Annual Salary Baseline/ }));
+    await vi.waitFor(() => expect(document.getElementById("search-target-annual-salary")).toHaveClass("search-highlight"));
+  });
+});

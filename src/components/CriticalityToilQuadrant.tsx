@@ -30,7 +30,7 @@ export function CriticalityToilQuadrant({
   const activeServices = services.filter((service) => service.isActive);
 
   return (
-    <section className="criticality-quadrant" aria-label="Criticality vs. Toil" data-testid="criticality-quadrant">
+    <section className="criticality-quadrant" aria-label="Criticality vs. Toil" data-testid="criticality-quadrant" id="search-target-criticality-matrix">
       <h3>Criticality vs. Toil</h3>
       <p className="criticality-quadrant__axes">
         Blast radius: Low ≤ 1.0, High &gt; 1.0 · Weekly required hours: Low ≤ 5, High &gt; 5

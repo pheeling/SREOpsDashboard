@@ -47,6 +47,7 @@ export function ServiceCard({
     <article
       className={`service-card ${service.isActive ? "service-card--active" : "service-card--inactive"} ${service.sloStatus === "exhausted" ? "service-card--slo-exhausted" : ""} ${isExpanded ? "service-card--expanded" : ""}`}
       data-testid={`service-card-${service.id}`}
+      id={`search-target-service-${service.id}`}
     >
       <div className="service-card__overview">
         <button

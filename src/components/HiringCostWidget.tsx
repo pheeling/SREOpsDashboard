@@ -13,7 +13,7 @@ export function HiringCostWidget() {
   const dividend = calculateUpskillingDividend(state.services, state.globalConfig);
 
   return (
-    <section className="dashboard-card hiring-cost-widget" aria-label="Financial Impact: Hiring vs Internal Upskilling" data-testid="hiring-cost-widget">
+    <section className="dashboard-card hiring-cost-widget" aria-label="Financial Impact: Hiring vs Internal Upskilling" data-testid="hiring-cost-widget" id="search-target-upskilling-dividend">
       <h2>Financial Impact: Hiring vs Internal Upskilling</h2>
       <div className="hiring-cost-widget__comparison">
         <div>
