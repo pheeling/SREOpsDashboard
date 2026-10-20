@@ -158,7 +158,6 @@ function DashboardContent() {
   const [activeTab, setActiveTab] = useState<DashboardTab>("summary");
   const [activeQuickTab, setActiveQuickTab] = useState<QuickTab>("overview");
   const [showSummaryReport, setShowSummaryReport] = useState(false);
-  const [pagerEnabled, setPagerEnabled] = useState(true);
 
   const selectTab = (tab: DashboardTab) => {
     setActiveTab(tab);
@@ -175,48 +174,15 @@ function DashboardContent() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <a className="brand" href="#" aria-label="Obsidian Telemetry home">
+        <a className="brand" href="#" aria-label="SRE Dashboard home">
           <span className="brand__mark" aria-hidden="true">◈</span>
-          <span className="brand__name">OBSIDIAN <span>TELEMETRY</span></span>
+          <span className="brand__name">SRE Dashboard</span>
         </a>
-        <div className="topbar__cluster">
-          <span className="topbar__eyebrow">CLUSTER</span>
-          <select aria-label="Cluster">
-            <option>production-us-east-1</option>
-            <option>staging-us-east-1</option>
-          </select>
-        </div>
         <label className="topbar__search">
           <span aria-hidden="true">⌕</span>
           <input type="search" aria-label="Search telemetry" placeholder="Search anything..." />
           <kbd>⌘ K</kbd>
         </label>
-        <div className="topbar__health" aria-label="System status: 99.992% SLO">
-          <span className="status-dot" />
-          <span className="topbar__health-label">SYSTEM STATUS</span>
-          <strong>99.992% <span>SLO</span></strong>
-        </div>
-        <button
-          className={`pager-toggle ${pagerEnabled ? "pager-toggle--on" : ""}`}
-          type="button"
-          aria-pressed={pagerEnabled}
-          onClick={() => setPagerEnabled(!pagerEnabled)}
-        >
-          <span className="pager-toggle__dot" />
-          Pager {pagerEnabled ? "On" : "Off"}
-        </button>
-        <button className="profile-button" type="button" aria-label="User profile: Alex Morgan">
-          <span className="profile-button__avatar">AM</span>
-          <span className="profile-button__name">Alex Morgan</span>
-          <span aria-hidden="true">⌄</span>
-        </button>
-        <div className="mobile-health" aria-label="Cluster health 99.982% SLO">
-          <span className="status-dot" />99.982% <span>SLO</span>
-        </div>
-        <button className="mobile-alerts" type="button" aria-label="2 active alerts">
-          ♧<span>2</span>
-        </button>
-        <span className="mobile-avatar" aria-label="Alex Morgan">AM</span>
       </header>
 
       <div className="app-layout">
