@@ -5,10 +5,12 @@ import {
   AUTOMATION_REDUCTION_FACTOR,
   DEFAULT_CAPACITY_EFFICIENCY_FACTOR,
   DEFAULT_SERVICE_WEIGHT,
+  EMERGENCY_RESPONSE_SHARE,
   EXPERTISE_EFFORT_MULTIPLIER,
   ON_CALL_MONITORING_SHARE,
   PRR_FRICTION_MULTIPLIER,
   SECURITY_COMPLIANCE_SHARE,
+  TESTING_SCALING_SHARE,
   calculateUpskillingDividend,
   computeCapacityReport,
   getAutomationRoiHours,
@@ -174,17 +176,17 @@ describe("effective capacity", () => {
     expect(DEFAULT_CAPACITY_EFFICIENCY_FACTOR).toBe(0.8);
   });
 
-  it("uses effective capacity for fixed bucket allocations and utilization", () => {
+  it("uses effective capacity for fixed reserves with contracted hours as the load denominator", () => {
     const report = computeCapacityReport({
       globalConfig: { fteCount: 5, weeklyHours: 40, annualSalary: 150000 },
       services: [],
     });
 
     expect(report.totalAvailableHours).toBe(200);
-    expect(report.effectiveAvailableHours).toBe(160);
+    expect(report.effectiveAvailableHours).toBe(200);
     expect(report.buckets.emergencyResponse).toBe(16);
-    expect(report.buckets.innovation).toBe(112);
-    expect(report.operationalLoadRatio).toBeCloseTo(0.3);
+    expect(report.buckets.innovation).toBeCloseTo(121.6);
+    expect(report.operationalLoadRatio).toBeCloseTo(0.24);
   });
 
   it("uses the configured factor for reserves and utilization", () => {
@@ -198,9 +200,9 @@ describe("effective capacity", () => {
       services: [],
     });
 
-    expect(report.effectiveAvailableHours).toBe(100);
+    expect(report.effectiveAvailableHours).toBe(200);
     expect(report.buckets.emergencyResponse).toBe(10);
-    expect(report.operationalLoadRatio).toBeCloseTo(0.3);
+    expect(report.operationalLoadRatio).toBeCloseTo(0.15);
   });
 });
 
@@ -226,6 +228,8 @@ describe("getCapacityBuckets", () => {
     };
     const buckets = getCapacityBuckets(state);
     const effectiveCapacityHours = getTotalAvailableHours(state.globalConfig) * DEFAULT_CAPACITY_EFFICIENCY_FACTOR;
+    expect(buckets.emergencyResponse).toBeCloseTo(effectiveCapacityHours * EMERGENCY_RESPONSE_SHARE);
+    expect(buckets.testingScaling).toBeCloseTo(effectiveCapacityHours * TESTING_SCALING_SHARE);
     expect(buckets.securityCompliance).toBeCloseTo(effectiveCapacityHours * SECURITY_COMPLIANCE_SHARE);
     expect(buckets.onCallMonitoring).toBeCloseTo(effectiveCapacityHours * ON_CALL_MONITORING_SHARE);
   });
@@ -241,6 +245,25 @@ describe("getHiringCost", () => {
 
   it("returns a positive cost as soon as load exceeds 50%", () => {
     expect(getHiringCost(100.2, 200, globalConfig)).toBeGreaterThan(0);
+  });
+
+  it("keeps exactly 50% operational load healthy and flags any amount above it", () => {
+    const state: DashboardState = {
+      globalConfig: { fteCount: 1, weeklyHours: 40, annualSalary: 150000 },
+      services: [makeService({ deployHours: 0, maintenanceHours: 10.4 })],
+    };
+    const atLimit = computeCapacityReport(state);
+    const aboveLimit = computeCapacityReport({
+      ...state,
+      services: [makeService({ deployHours: 0, maintenanceHours: 10.44 })],
+    });
+
+    expect(atLimit.operationalLoadRatio).toBeCloseTo(0.5);
+    expect(atLimit.isRedZone).toBe(false);
+    expect(atLimit.hiringCost).toBe(0);
+    expect(aboveLimit.operationalLoadRatio).toBeCloseTo(0.501);
+    expect(aboveLimit.isRedZone).toBe(true);
+    expect(aboveLimit.hiringCost).toBeGreaterThan(0);
   });
 
   it("computes FTE shortfall using 50% of weekly hours per hire", () => {
@@ -307,15 +330,15 @@ describe("getAutomationRoiDollars", () => {
 });
 
 describe("computeCapacityReport - SRE scenario validation", () => {
-  it("counts routine and reactive work as operational load, not innovation capacity", () => {
+  it("counts fixed operational reserves as load and keeps innovation separate", () => {
     const report = computeCapacityReport({
       globalConfig: { fteCount: 10, weeklyHours: 40, annualSalary: 150000 },
       services: [],
     });
 
-    expect(report.operationalLoadHours).toBe(120);
-    expect(report.buckets.innovation).toBe(280);
-    expect(report.operationalLoadRatio).toBe(0.3);
+    expect(report.operationalLoadHours).toBe(96);
+    expect(report.buckets.innovation).toBeCloseTo(243.2);
+    expect(report.operationalLoadRatio).toBeCloseTo(0.24);
     expect(report.isRedZone).toBe(false);
   });
 
