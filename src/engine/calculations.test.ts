@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DashboardState, Service } from "./types";
 import {
+  computeScopedReport,
   AUTOMATION_REDUCTION_FACTOR,
   DEFAULT_CAPACITY_EFFICIENCY_FACTOR,
   DEFAULT_SERVICE_WEIGHT,
@@ -528,5 +529,36 @@ describe("interrupt shield", () => {
     const report = computeCapacityReport(base(true));
     expect(report.cognitiveOverheadHours).toBe(0);
     expect(report.recoveredInnovationHours).toBeCloseTo(report.buckets.innovation * 0.2);
+  });
+});
+
+describe("multi-team scoped calculations", () => {
+  const mk = (id: string, teamId: string, hours: number): Service => ({
+    id, name: id, deployHours: 0, maintenanceHours: hours, isActive: true, hasExpertise: true,
+    isAutomated: false, prrApproved: true, sloStatus: "healthy", teamId,
+  });
+  const state: DashboardState = {
+    globalConfig: { fteCount: 1, weeklyHours: 40, annualSalary: 100000 },
+    teams: [
+      { id: "a", name: "A", fteCount: 1, weeklyHours: 40, effectiveCapacityPercentage: 0.8, annualSalaryBaseline: 100000 },
+      { id: "b", name: "B", fteCount: 10, weeklyHours: 40, effectiveCapacityPercentage: 0.5, annualSalaryBaseline: 100000 },
+    ],
+    services: [mk("s1", "a", 30), mk("s2", "b", 10)],
+    selectedTeamId: "all",
+  };
+
+  it("isolates metrics for a team", () => {
+    const r = computeScopedReport(state, "a");
+    expect(r.totalContractedHours).toBe(40);
+    expect(r.totalRoutineOperations).toBe(30);
+    expect(r.hiringShortfall).toBeGreaterThan(0);
+  });
+
+  it("aggregates the organization without netting shortfalls", () => {
+    const r = computeScopedReport(state, "all");
+    expect(r.totalContractedHours).toBe(440);
+    expect(r.totalEffectiveCapacity).toBe(32 + 200);
+    expect(r.totalRoutineOperations).toBe(40);
+    expect(r.hiringShortfall).toBe(computeScopedReport(state, "a").hiringShortfall + computeScopedReport(state, "b").hiringShortfall);
   });
 });
