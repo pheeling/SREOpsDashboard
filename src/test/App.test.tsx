@@ -633,4 +633,58 @@ describe("Global search", () => {
     await user.selectOptions(screen.getByTestId("team-view-filter"), "all");
     expect(screen.getByText("Services (19/19 active)")).toBeInTheDocument();
   });
+  it("creates, verifies and lists snapshots from the audit log", async () => {
+    const user = userEvent.setup();
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push(`${init?.method ?? "GET"} ${url}`);
+      const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+      if (url === "/api/snapshots" && init?.method === "POST") return json({ id: "snap-1" }, 201);
+      if (url === "/api/snapshots/snap-1/verify") return json({ verified: true });
+      return json({
+        points: [{
+          id: "snap-1", createdAt: "2026-01-01 10:00:00", triggerType: "manual", label: "Q1",
+          operationalLoadPercentage: 0.375, contractedHours: 80, toilHours: 30, isRedZone: false,
+          teamsInRedZone: 2, deficitHours: 0, hiringCost: 0,
+        }],
+      });
+    }));
+    try {
+      render(<App />);
+      await user.click(screen.getByRole("button", { name: "View Full Audit Log" }));
+      await user.click(screen.getByRole("button", { name: "Take Snapshot" }));
+      const dialog = screen.getByRole("dialog", { name: "Take Snapshot" });
+      expect((within(dialog).getByLabelText("Snapshot Label") as HTMLInputElement).value).toMatch((/^Manual Snapshot — \d{4}-\d{2}-\d{2} \d{2}:\d{2}$/));
+      await user.click(within(dialog).getByRole("button", { name: "Create & Verify" }));
+
+      expect(await screen.findByRole("status")).toHaveTextContent("verified in database (ID: snap-1)");
+      expect(calls).toEqual(["POST /api/snapshots", "GET /api/snapshots/snap-1/verify"]);
+      expect(screen.getAllByText(/ACTION: SNAPSHOT_CREATED \| ID: snap-1/).length).toBeGreaterThan(0);
+
+      await user.click(screen.getByRole("button", { name: "View Snapshots" }));
+      const history = screen.getByRole("dialog", { name: "Snapshot History" });
+      expect(await within(history).findByText("37.5%")).toBeInTheDocument();
+      expect(within(history).getByText("Verified in SQLite")).toBeInTheDocument();
+      await user.click(within(history).getByRole("button", { name: "90 Days" }));
+      expect(calls).toContain("GET /api/snapshots?range=90d");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("keeps the snapshot form open with an error when the database is busy", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: "busy" }), { status: 503 })));
+    try {
+      render(<App />);
+      await user.click(screen.getByRole("button", { name: "View Full Audit Log" }));
+      await user.click(screen.getByRole("button", { name: "Take Snapshot" }));
+      const dialog = screen.getByRole("dialog", { name: "Take Snapshot" });
+      await user.click(within(dialog).getByRole("button", { name: "Create & Verify" }));
+      expect(await within(dialog).findByRole("alert")).toHaveTextContent("SQLITE_BUSY");
+      expect(within(dialog).getByRole("button", { name: "Retry" })).toBeEnabled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

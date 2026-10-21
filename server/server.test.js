@@ -74,4 +74,14 @@ describe('persistence API', () => {
     expect(captureScheduledSnapshot(db)).not.toBeNull();
     expect(captureScheduledSnapshot(db)).toBeNull();
   });
+
+  it('verifies persisted snapshots', async () => {
+    const { id } = await (await call('/api/snapshots', 'POST', snapshot())).json();
+    const ok = await (await call(`/api/snapshots/${id}/verify`)).json();
+    expect(ok).toMatchObject({ verified: true, snapshotId: id, recordsPersisted: { teams: 1, services: 1 } });
+    const missing = await call('/api/snapshots/nope/verify');
+    expect(missing.status).toBe(404);
+    expect((await missing.json()).verified).toBe(false);
+    expect((await call('/api/snapshots?range=all')).status).toBe(200);
+  });
 });
