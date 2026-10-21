@@ -7,6 +7,7 @@ export interface NewCustomService {
   name: string;
   deployHours: number;
   maintenanceHours: number;
+  teamId?: string;
 }
 
 export type DashboardAction =
@@ -18,6 +19,7 @@ export type DashboardAction =
   | { type: "UPDATE_SERVICE_WEIGHT"; serviceId: string; weight: number }
   | { type: "APPLY_STABILIZATION_SPRINT"; serviceId: string }
   | { type: "SET_OWNERSHIP"; serviceId: string; ownershipModel: OwnershipModel }
+  | { type: "SET_SERVICE_TEAM"; serviceId: string; teamId: string }
   | { type: "ADD_CUSTOM_SERVICE"; payload: NewCustomService }
   | { type: "DELETE_SERVICE"; serviceId: string }
   | { type: "DELETE_ALL_SERVICES" }
@@ -85,6 +87,14 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
           service.id === action.serviceId ? { ...service, ownershipModel: action.ownershipModel } : service,
         ),
       };
+    case "SET_SERVICE_TEAM":
+      if (!state.teams?.some((team) => team.id === action.teamId)) return state;
+      return {
+        ...state,
+        services: state.services.map((service) =>
+          service.id === action.serviceId ? { ...service, teamId: action.teamId } : service,
+        ),
+      };
     case "ADD_CUSTOM_SERVICE": {
       const { name, deployHours, maintenanceHours } = action.payload;
       const baseSlug = slugify(name) || "custom_service";
@@ -105,9 +115,9 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
         prrApproved: true,
         sloStatus: "healthy",
         isCustom: true,
-        teamId: state.teams?.some((team) => team.id === state.selectedTeamId)
-          ? state.selectedTeamId
-          : state.teams?.[0]?.id,
+        teamId: [action.payload.teamId, state.selectedTeamId].find((candidate) =>
+          state.teams?.some((team) => team.id === candidate),
+        ) ?? state.teams?.[0]?.id,
       };
       return { ...state, services: [...state.services, newService] };
     }

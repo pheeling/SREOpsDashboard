@@ -11,6 +11,20 @@ function createState(): DashboardState {
   };
 }
 
+function createTwoTeamState(): DashboardState {
+  const base = ensureTeams(createState());
+  const team = base.teams![0];
+  return {
+    ...base,
+    teams: [
+      { ...team, id: "team_a", name: "Team A" },
+      { ...team, id: "team_b", name: "Team B" },
+    ],
+    selectedTeamId: "team_a",
+    services: base.services.map((service) => ({ ...service, teamId: "team_a" })),
+  };
+}
+
 describe("SLO status state", () => {
   it("seeds every default service with a healthy SLO status", () => {
     expect(DEFAULT_SERVICES.every((service) => service.sloStatus === "healthy")).toBe(true);
@@ -39,6 +53,32 @@ describe("SLO status state", () => {
       payload: { name: "Message Queue", deployHours: 1, maintenanceHours: 1 },
     });
     expect(added.services.find((service) => service.id === "custom_message_queue")?.sloStatus).toBe("healthy");
+  });
+
+  it("assigns a service to an existing team and ignores unknown teams", () => {
+    const state = createTwoTeamState();
+    const updated = dashboardReducer(state, { type: "SET_SERVICE_TEAM", serviceId: "databases", teamId: "team_b" });
+    expect(updated.services.find((service) => service.id === "databases")?.teamId).toBe("team_b");
+    expect(dashboardReducer(state, { type: "SET_SERVICE_TEAM", serviceId: "databases", teamId: "nope" })).toBe(state);
+  });
+
+  it("assigns custom services to the chosen team, falling back to the first team", () => {
+    const chosen = dashboardReducer(createTwoTeamState(), {
+      type: "ADD_CUSTOM_SERVICE",
+      payload: { name: "Queue", deployHours: 1, maintenanceHours: 1, teamId: "team_b" },
+    });
+    expect(chosen.services.find((service) => service.id === "custom_queue")?.teamId).toBe("team_b");
+    const fallback = dashboardReducer(createTwoTeamState(), {
+      type: "ADD_CUSTOM_SERVICE",
+      payload: { name: "Queue", deployHours: 1, maintenanceHours: 1, teamId: "nope" },
+    });
+    expect(fallback.services.find((service) => service.id === "custom_queue")?.teamId).toBe("team_a");
+  });
+
+  it("assigns restored default services to the primary team", () => {
+    const restored = dashboardReducer(createTwoTeamState(), { type: "RESTORE_DEFAULT_SERVICES" });
+    expect(restored.services).toHaveLength(19);
+    expect(restored.services.every((service) => service.teamId === "team_a")).toBe(true);
   });
 });
 

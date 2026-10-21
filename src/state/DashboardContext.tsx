@@ -67,6 +67,12 @@ function getAuditMessages(state: DashboardState, action: DashboardAction): strin
       return service && getOwnershipModel(service) !== action.ownershipModel
         ? [`Updated ${name} Ownership to ${OWNERSHIP_LABELS[action.ownershipModel]}`]
         : [];
+    case "SET_SERVICE_TEAM": {
+      const team = state.teams?.find((item) => item.id === action.teamId);
+      return service && team && service.teamId !== action.teamId
+        ? [`Assigned ${name} to team ${team.name}`]
+        : [];
+    }
     case "ADD_CUSTOM_SERVICE":
       return [`Added service ${action.payload.name.trim() || "Custom Service"}`];
     case "DELETE_SERVICE":
