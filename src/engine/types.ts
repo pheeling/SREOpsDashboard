@@ -53,11 +53,26 @@ export interface Service {
   weight?: number;
   /** Who carries the pager/toil for this service; defaults to `sre_full`. */
   ownershipModel?: OwnershipModel;
+  /** Team that owns this service; unassigned services belong to the first team. */
+  teamId?: string;
 }
 
+export interface Team {
+  id: string;
+  name: string;
+  config: GlobalConfig;
+}
+
+/** Sentinel `selectedTeamId` for the aggregate Organization View. */
+export const ALL_TEAMS_ID = "all";
+
 export interface DashboardState {
+  /** Config of the active scope: the selected team's, or the aggregate when viewing all teams. */
   globalConfig: GlobalConfig;
   services: Service[];
+  teams?: Team[];
+  /** A team id, or `ALL_TEAMS_ID` for the Organization View. */
+  selectedTeamId?: string;
 }
 
 /** The six Capacity Budget buckets. */

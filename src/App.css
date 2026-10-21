@@ -1864,3 +1864,34 @@
     box-shadow: 0 0 0 transparent;
   }
 }
+
+.dashboard__view-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.config-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.config-team-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.service-card__team {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
+.service-matrix__group-heading {
+  grid-column: 1 / -1;
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+}

@@ -1,9 +1,17 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { Dispatch, ReactNode } from "react";
-import type { DashboardState, GlobalConfig } from "../engine/types";
+import type { DashboardState, GlobalConfig, Team } from "../engine/types";
+import { ALL_TEAMS_ID } from "../engine/types";
 import { cloneDefaultServices } from "../engine/seedServices";
-import { DEFAULT_ANNUAL_SALARY, getOwnershipModel, OWNERSHIP_LABELS } from "../engine/calculations";
-import { dashboardReducer, type DashboardAction } from "./dashboardReducer";
+import {
+  DEFAULT_ANNUAL_SALARY,
+  getOwnershipModel,
+  getScopedHiringCost,
+  getScopedServices,
+  getTeams,
+  OWNERSHIP_LABELS,
+} from "../engine/calculations";
+import { dashboardReducer, normalizeState, type DashboardAction } from "./dashboardReducer";
 import { loadState, saveState } from "./localStorage";
 
 export interface AuditLogEntry {
@@ -12,7 +20,7 @@ export interface AuditLogEntry {
   message: string;
 }
 
-export const INITIAL_STATE: DashboardState = {
+export const INITIAL_STATE: DashboardState = normalizeState({
   globalConfig: {
     fteCount: 5,
     weeklyHours: 40,
@@ -21,10 +29,19 @@ export const INITIAL_STATE: DashboardState = {
     annualSalary: DEFAULT_ANNUAL_SALARY,
   },
   services: cloneDefaultServices(),
-};
+});
 
 interface DashboardContextValue {
+  /** State scoped to the selected team (or the whole organization): scoped `services` and `globalConfig`. */
   state: DashboardState;
+  /** Unfiltered state across every team. */
+  fullState: DashboardState;
+  teams: Team[];
+  selectedTeamId: string;
+  selectedTeamName: string | null;
+  /** Hiring exposure for the active scope; the Organization View sums each team's shortfall. */
+  hiringCost: number;
+  isOrganizationView: boolean;
   dispatch: Dispatch<DashboardAction>;
   auditLogs: AuditLogEntry[];
   clearAuditLogs: () => void;
@@ -74,7 +91,14 @@ function getAuditMessages(state: DashboardState, action: DashboardAction): strin
       return state.services.length ? ["Deleted all services"] : [];
     case "RESTORE_DEFAULT_SERVICES":
       return ["Restored default services"];
+    case "ADD_TEAM":
+      return action.name.trim() ? [`Added team ${action.name.trim()}`] : [];
+    case "SET_SERVICE_TEAM": {
+      const team = state.teams?.find((item) => item.id === action.teamId);
+      return service && team ? [`Assigned ${name} to team ${team.name}`] : [];
+    }
     case "UPDATE_GLOBAL_CONFIG":
+      if (state.selectedTeamId === ALL_TEAMS_ID) return [];
       return getGlobalConfigAuditMessages(state.globalConfig, action.payload);
     case "RESET":
       return ["Reset dashboard configuration"];
@@ -122,7 +146,8 @@ function formatTimestamp(date: Date): string {
 }
 
 function init(): DashboardState {
-  return loadState() ?? INITIAL_STATE;
+  const loaded = loadState();
+  return loaded ? normalizeState(loaded) : INITIAL_STATE;
 }
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
@@ -154,7 +179,22 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     saveState(state);
   }, [state]);
 
-  const value = useMemo(() => ({ state, dispatch, auditLogs, clearAuditLogs }), [state, dispatch, auditLogs, clearAuditLogs]);
+  const value = useMemo(() => {
+    const teams = getTeams(state);
+    const selectedTeamId = state.selectedTeamId ?? teams[0].id;
+    return {
+      state: { ...state, services: getScopedServices(state.services, teams, selectedTeamId) },
+      fullState: state,
+      teams,
+      selectedTeamId,
+      selectedTeamName: teams.find((team) => team.id === selectedTeamId)?.name ?? null,
+      hiringCost: getScopedHiringCost(state),
+      isOrganizationView: selectedTeamId === ALL_TEAMS_ID,
+      dispatch,
+      auditLogs,
+      clearAuditLogs,
+    };
+  }, [state, dispatch, auditLogs, clearAuditLogs]);
 
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;
 }

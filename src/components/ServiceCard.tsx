@@ -1,4 +1,4 @@
-import type { OwnershipModel, Service, SloStatus } from "../engine/types";
+import type { OwnershipModel, Service, SloStatus, Team } from "../engine/types";
 import { OWNERSHIP_LABELS, getBaseHours, getOwnershipModel, getRequiredHours } from "../engine/calculations";
 
 interface ServiceCardProps {
@@ -14,6 +14,9 @@ interface ServiceCardProps {
   onChangeWeight: (id: string, weight: number) => void;
   onChangeOwnership: (id: string, ownershipModel: OwnershipModel) => void;
   onDelete: (id: string) => void;
+  teams?: Team[];
+  onChangeTeam?: (id: string, teamId: string) => void;
+  showTeam?: boolean;
 }
 
 export function ServiceCard({
@@ -29,7 +32,11 @@ export function ServiceCard({
   onChangeWeight,
   onChangeOwnership,
   onDelete,
+  teams = [],
+  onChangeTeam,
+  showTeam = false,
 }: ServiceCardProps) {
+  const teamName = showTeam ? teams.find((team) => team.id === service.teamId)?.name : undefined;
   const requiredHours = getRequiredHours(service);
   const baseHours = getBaseHours(service);
   const weight = service.weight ?? 1;
@@ -60,6 +67,7 @@ export function ServiceCard({
           <span className="service-card__summary-main">
             <span className="service-card__name">{service.name}</span>
             <span className="service-card__ownership">{ownershipLabel}</span>
+            {teamName && <span className="service-card__team">{teamName}</span>}
             <span className="service-card__expand-indicator" aria-hidden="true">{isExpanded ? "−" : "+"}</span>
           </span>
           <span className="service-card__hours">
@@ -175,6 +183,23 @@ export function ServiceCard({
               ))}
             </select>
           </label>
+
+          {teams.length > 1 && onChangeTeam && (
+            <label className="service-card__weight">
+              Team
+              <select
+                value={service.teamId}
+                onChange={(e) => onChangeTeam(service.id, e.target.value)}
+                aria-label={`${service.name} Team`}
+              >
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           <label className="service-card__weight">
             Criticality Weight

@@ -9,8 +9,9 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
 });
 
 export function GlobalConfigPanel() {
-  const { state, dispatch } = useDashboard();
+  const { state, dispatch, isOrganizationView, selectedTeamName, teams } = useDashboard();
   const { globalConfig } = state;
+  const [newTeamName, setNewTeamName] = useState("");
   const [fteInput, setFteInput] = useState(String(globalConfig.fteCount));
   const [salaryInput, setSalaryInput] = useState(currencyFormatter.format(globalConfig.annualSalary));
 
@@ -35,6 +36,34 @@ export function GlobalConfigPanel() {
   return (
     <section className="dashboard-card global-config-panel" aria-label="Team Configuration">
       <h2>Team Configuration</h2>
+      {isOrganizationView ? (
+        <p className="config-control__hint" data-testid="org-config-summary">
+          Organization totals across {teams.length} {teams.length === 1 ? "team" : "teams"}: {globalConfig.fteCount} Total FTEs ·{" "}
+          {currencyFormatter.format(globalConfig.annualSalary)} Average Salary · {capacityPercent.toFixed(0)}% Average
+          Capacity. Select a team to edit its settings.
+        </p>
+      ) : (
+        <p className="config-control__hint">Editing {selectedTeamName}.</p>
+      )}
+      <form
+        className="config-team-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!newTeamName.trim()) return;
+          dispatch({ type: "ADD_TEAM", name: newTeamName });
+          setNewTeamName("");
+        }}
+      >
+        <input
+          type="text"
+          value={newTeamName}
+          onChange={(e) => setNewTeamName(e.target.value)}
+          aria-label="New team name"
+          placeholder="New team name"
+        />
+        <button type="submit">Add Team</button>
+      </form>
+      <fieldset className="config-fieldset" disabled={isOrganizationView}>
       <div className="config-control" id="search-target-fte-count">
         <label htmlFor="fte-count">FTE Count</label>
         <div className="config-control__range-row">
@@ -135,6 +164,7 @@ export function GlobalConfigPanel() {
           One primary on-call engineer shields the remaining builders from interrupts.
         </p>
       </div>
+      </fieldset>
     </section>
   );
 }

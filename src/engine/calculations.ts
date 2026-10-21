@@ -13,7 +13,9 @@ import type {
   OwnershipModel,
   Service,
   ServiceBreakdown,
+  Team,
 } from "./types";
+import { ALL_TEAMS_ID } from "./types";
 
 /** Divisor applied to a service's hours once it has been automated ("1/3 Automation Rule"). */
 export const AUTOMATION_REDUCTION_FACTOR = 3;
@@ -423,4 +425,69 @@ export function simulateStabilizationSprint(state: DashboardState): Stabilizatio
     before,
     after,
   };
+}
+
+export const DEFAULT_TEAM_ID = "default";
+
+/** Returns the stored teams, or a single default team built from the legacy `globalConfig`. */
+export function getTeams(state: DashboardState): Team[] {
+  return state.teams?.length
+    ? state.teams
+    : [{ id: DEFAULT_TEAM_ID, name: "Default Team", config: state.globalConfig }];
+}
+
+export function isOrganizationView(state: DashboardState): boolean {
+  return state.selectedTeamId === ALL_TEAMS_ID;
+}
+
+/** Service ownership with unassigned services falling back to the first team. */
+export function getServiceTeamId(service: Service, teams: Team[]): string {
+  return service.teamId && teams.some((team) => team.id === service.teamId) ? service.teamId : teams[0].id;
+}
+
+/** Aggregates team configs: summed FTEs, FTE-weighted averages for hours, capacity and salary. */
+export function aggregateTeamConfigs(teams: Team[]): GlobalConfig {
+  if (teams.length === 1) return teams[0].config;
+  const fte = teams.reduce((sum, team) => sum + finiteNumber(team.config.fteCount), 0);
+  const hours = teams.reduce((sum, team) => sum + getTotalAvailableHours(team.config), 0);
+  const effective = teams.reduce((sum, team) => sum + getEffectiveCapacityHours(team.config), 0);
+  const salaryTotal = teams.reduce(
+    (sum, team) => sum + finiteNumber(team.config.fteCount) * finiteNumber(team.config.annualSalary),
+    0,
+  );
+  return {
+    fteCount: fte,
+    weeklyHours: fte > 0 ? hours / fte : 0,
+    capacityEfficiencyFactor: hours > 0 ? effective / hours : DEFAULT_CAPACITY_EFFICIENCY_FACTOR,
+    annualSalary: fte > 0 ? salaryTotal / fte : 0,
+    hasInterruptShield: teams.every((team) => team.config.hasInterruptShield),
+  };
+}
+
+/** Config for the selected scope: one team's config, or the aggregate for the Organization View. */
+export function getScopedConfig(teams: Team[], selectedTeamId: string): GlobalConfig {
+  return teams.find((team) => team.id === selectedTeamId)?.config ?? aggregateTeamConfigs(teams);
+}
+
+/** Services visible in the selected scope. */
+export function getScopedServices(services: Service[], teams: Team[], selectedTeamId: string): Service[] {
+  return selectedTeamId === ALL_TEAMS_ID
+    ? services
+    : services.filter((service) => getServiceTeamId(service, teams) === selectedTeamId);
+}
+
+/** Hiring exposure for the selected scope; the Organization View sums each team's own shortfall. */
+export function getScopedHiringCost(state: DashboardState): number {
+  const teams = getTeams(state);
+  const selected = state.selectedTeamId ?? teams[0].id;
+  const scopedTeams = selected === ALL_TEAMS_ID ? teams : teams.filter((team) => team.id === selected);
+  return scopedTeams.reduce(
+    (sum, team) =>
+      sum +
+      computeCapacityReport({
+        globalConfig: team.config,
+        services: state.services.filter((service) => getServiceTeamId(service, teams) === team.id),
+      }).hiringCost,
+    0,
+  );
 }

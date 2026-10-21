@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import type { OwnershipModel, SloStatus } from "../engine/types";
 import { useDashboard } from "../state/DashboardContext";
@@ -13,7 +13,8 @@ interface ServiceMatrixProps {
 }
 
 export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
-  const { state, dispatch } = useDashboard();
+  const { state, dispatch, teams, isOrganizationView, selectedTeamName } = useDashboard();
+  const [groupByTeam, setGroupByTeam] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [name, setName] = useState("");
   const [deployHours, setDeployHours] = useState("1");
@@ -51,6 +52,8 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
 
   const handleChangeOwnership = (serviceId: string, ownershipModel: OwnershipModel) =>
     dispatch({ type: "SET_OWNERSHIP", serviceId, ownershipModel });
+  const handleChangeTeam = (serviceId: string, teamId: string) =>
+    dispatch({ type: "SET_SERVICE_TEAM", serviceId, teamId });
   const handleDelete = (serviceId: string) => dispatch({ type: "DELETE_SERVICE", serviceId });
   const handleDeleteAll = () => {
     if (window.confirm("Delete all services from the catalog?")) {
@@ -67,7 +70,7 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
       .map((entry) => entry.id),
   );
   const avgHoursPerService = activeCount > 0 ? totalRequiredHours / activeCount : 0;
-  const visibleServices = state.services.filter((service) => {
+  const filteredServices = state.services.filter((service) => {
     if (selectedQuadrantFilter && (!service.isActive || getServiceQuadrantKey(service) !== selectedQuadrantFilter)) {
       return false;
     }
@@ -77,6 +80,14 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
       ? service.sloStatus === "exhausted"
       : service.sloStatus === "warning" || service.sloStatus === "exhausted";
   });
+
+  const teamOrder = new Map(teams.map((team, index) => [team.id, index]));
+  const visibleServices =
+    isOrganizationView && groupByTeam
+      ? [...filteredServices].sort(
+          (a, b) => (teamOrder.get(a.teamId ?? "") ?? 0) - (teamOrder.get(b.teamId ?? "") ?? 0),
+        )
+      : filteredServices;
 
   const handleAddCustomService = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -99,7 +110,7 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
     <section className="dashboard-card service-matrix" aria-label="Service Matrix">
       <div className="service-matrix__toolbar">
         <h2>
-          Services ({activeCount}/{state.services.length} active)
+          Services ({activeCount}/{state.services.length} active{selectedTeamName && teams.length > 1 ? ` for ${selectedTeamName}` : ""})
         </h2>
         <p className="service-matrix__scaling-note" data-testid="service-scaling-note">
           {totalRequiredHours.toFixed(1)} required hrs/wk across {activeCount} active service
@@ -178,6 +189,18 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
         </select>
       </label>
 
+      {isOrganizationView && teams.length > 1 && (
+        <label className="service-matrix__slo-filter">
+          <input
+            type="checkbox"
+            checked={groupByTeam}
+            onChange={(e) => setGroupByTeam(e.target.checked)}
+            aria-label="Group services by team"
+          />
+          Group by team
+        </label>
+      )}
+
       <CriticalityToilQuadrant
         services={state.services}
         selectedQuadrantFilter={selectedQuadrantFilter}
@@ -226,10 +249,18 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
               <span>Automation</span>
             </div>
             <div className="service-matrix__grid">
-              {visibleServices.map((service) => (
+              {visibleServices.map((service, index) => (
+                <Fragment key={service.id}>
+                  {isOrganizationView && groupByTeam && service.teamId !== visibleServices[index - 1]?.teamId && (
+                    <h4 className="service-matrix__group-heading">
+                      {teams.find((team) => team.id === service.teamId)?.name}
+                    </h4>
+                  )}
                 <ServiceCard
-                  key={service.id}
                   service={service}
+                  teams={teams}
+                  showTeam={isOrganizationView}
+                  onChangeTeam={handleChangeTeam}
                   isExpanded={expandedCardIds.has(service.id)}
                   onToggleExpanded={toggleExpandedCard}
                   isTopToilContributor={topToilIds.has(service.id)}
@@ -242,6 +273,7 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
                   onChangeOwnership={handleChangeOwnership}
                   onDelete={handleDelete}
                 />
+                </Fragment>
               ))}
             </div>
           </div>
