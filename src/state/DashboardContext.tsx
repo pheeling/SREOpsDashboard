@@ -42,6 +42,7 @@ interface DashboardContextValue {
   dispatch: Dispatch<DashboardAction>;
   auditLogs: AuditLogEntry[];
   clearAuditLogs: () => void;
+  addAuditLog: (message: string) => void;
 }
 
 const DashboardContext = createContext<DashboardContextValue | undefined>(undefined);
@@ -176,6 +177,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     }
   }, []);
   const clearAuditLogs = useCallback(() => setAuditLogs([]), []);
+  const addAuditLog = useCallback((message: string) => {
+    const timestamp = formatTimestamp(new Date());
+    setAuditLogs((entries) => [...entries, { id: nextLogId.current++, timestamp, message }]);
+  }, []);
 
   useLayoutEffect(() => {
     stateRef.current = state;
@@ -199,8 +204,9 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       dispatch,
       auditLogs,
       clearAuditLogs,
+      addAuditLog,
     };
-  }, [state, dispatch, auditLogs, clearAuditLogs]);
+  }, [state, dispatch, auditLogs, clearAuditLogs, addAuditLog]);
 
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;
 }

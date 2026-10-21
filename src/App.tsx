@@ -11,6 +11,7 @@ import { ServiceMatrix } from "./components/ServiceMatrix";
 import { SummaryReport } from "./components/SummaryReport";
 import { CapacityBucketsChart } from "./components/CapacityBucketsChart";
 import { WarningBanner } from "./components/WarningBanner";
+import { CreateSnapshotModal, SnapshotHistoryModal } from "./components/SnapshotDialogs";
 import { SearchBar } from "./components/SearchBar";
 import type { SearchEntry } from "./search/searchIndex";
 import { calculateUpskillingDividend, computeCapacityReport } from "./engine/calculations";
@@ -43,6 +44,9 @@ function AuditLog({
   onClear: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const compactEntries = [...entries].slice(-5).reverse();
 
   useEffect(() => {
@@ -58,6 +62,12 @@ function AuditLog({
       document.body.style.overflow = previousOverflow;
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 6000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   const exportLogs = () => {
     const blob = new Blob([JSON.stringify(entries, null, 2)], { type: "application/json" });
@@ -105,6 +115,12 @@ function AuditLog({
             </header>
             <ol aria-label="Complete configuration change history">{renderEntries(entries)}</ol>
             <footer>
+              <button type="button" onClick={() => setIsHistoryOpen(true)} title="View historical capacity snapshots">
+                View Snapshots
+              </button>
+              <button type="button" onClick={() => setIsCreateOpen(true)} title="Capture and verify point-in-time capacity snapshot">
+                Take Snapshot
+              </button>
               <button type="button" onClick={exportLogs}>Export Audit Log</button>
               <button type="button" onClick={onClear} disabled={entries.length === 0}>Clear Audit Log</button>
             </footer>
@@ -112,6 +128,17 @@ function AuditLog({
         </div>,
         document.body,
       )}
+      {isCreateOpen && (
+        <CreateSnapshotModal
+          onClose={() => setIsCreateOpen(false)}
+          onCreated={(id) => {
+            setIsCreateOpen(false);
+            setToast(`Snapshot successfully captured and verified in database (ID: ${id})`);
+          }}
+        />
+      )}
+      {isHistoryOpen && <SnapshotHistoryModal onClose={() => setIsHistoryOpen(false)} />}
+      {toast && createPortal(<div className="snapshot-toast" role="status">{toast}</div>, document.body)}
     </>
   );
 }

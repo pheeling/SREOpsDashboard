@@ -1898,3 +1898,92 @@
   margin: 0.5rem 0 0;
   font-size: 0.9rem;
 }
+
+.snapshot-dialog__field,
+.snapshot-dialog__toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  color: var(--text);
+}
+
+.snapshot-dialog__field {
+  flex-direction: column;
+}
+
+.snapshot-dialog__field input {
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--text);
+  font: inherit;
+}
+
+.snapshot-dialog > footer {
+  margin-top: 1rem;
+}
+
+.snapshot-dialog__error {
+  margin: 1rem 0 0;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--error);
+  border-radius: 6px;
+  color: var(--error);
+}
+
+.snapshot-dialog__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 1rem 0 0;
+}
+
+.snapshot-dialog__filters button,
+.snapshot-dialog__table button,
+.snapshot-dialog__error button {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.snapshot-dialog__filters button[aria-pressed="true"] {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.snapshot-dialog__table {
+  overflow: auto;
+  margin-top: 1rem;
+}
+
+.snapshot-dialog__table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.snapshot-dialog__table th,
+.snapshot-dialog__table td {
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.snapshot-toast {
+  position: fixed;
+  z-index: 10000;
+  right: 1rem;
+  bottom: 1rem;
+  max-width: min(420px, calc(100vw - 2rem));
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-container);
+  color: var(--text-h);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 40%);
+}

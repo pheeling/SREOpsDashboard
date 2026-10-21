@@ -3,7 +3,7 @@ import express from 'express';
 
 const STATE_KEY = 'dashboard';
 const TEMPLATE_KEY = 'snapshot_template';
-const RANGE_DAYS = { '30d': 30, '90d': 90, '180d': 180, '1y': 365 };
+const RANGE_DAYS = { '30d': 30, '90d': 90, '180d': 180, '1y': 365, all: 36500 };
 const TRIGGERS = ['manual', 'scheduled', 'milestone'];
 const OWNERSHIP = ['sre_full', 'shared', 'dev_owned'];
 const SLO = ['healthy', 'warning', 'exhausted'];
@@ -154,13 +154,39 @@ export function createApp(db) {
   app.post('/api/snapshots', (req, res) => {
     const error = validateSnapshot(req.body);
     if (error) return res.status(400).json({ error });
-    res.status(201).json({ id: insertSnapshot(db, req.body) });
+    try {
+      res.status(201).json({ id: insertSnapshot(db, req.body) });
+    } catch (err) {
+      if (String(err?.code).startsWith('SQLITE_BUSY')) {
+        return res.status(503).json({ error: 'Database is busy (SQLITE_BUSY); please retry' });
+      }
+      throw err;
+    }
+  });
+
+  app.get('/api/snapshots/:id/verify', (req, res) => {
+    const { id } = req.params;
+    try {
+      const snapshot = db.prepare('SELECT id, created_at FROM snapshots WHERE id = ?').get(id);
+      if (!snapshot) return res.status(404).json({ verified: false, error: 'Snapshot not found' });
+      const teams = db.prepare('SELECT COUNT(*) AS count FROM snapshot_teams WHERE snapshot_id = ?').get(id).count;
+      const services = db.prepare('SELECT COUNT(*) AS count FROM snapshot_services WHERE snapshot_id = ?').get(id).count;
+      res.json({
+        verified: teams > 0,
+        snapshotId: snapshot.id,
+        createdAt: snapshot.created_at,
+        recordsPersisted: { teams, services },
+      });
+    } catch (err) {
+      const busy = String(err?.code).startsWith('SQLITE_BUSY');
+      res.status(busy ? 503 : 500).json({ verified: false, error: err.message });
+    }
   });
 
   app.get('/api/snapshots', (req, res) => {
     const range = req.query.range ?? '30d';
     const days = RANGE_DAYS[range];
-    if (!days) return res.status(400).json({ error: 'range must be one of 30d, 90d, 180d, 1y' });
+    if (!days) return res.status(400).json({ error: 'range must be one of 30d, 90d, 180d, 1y, all' });
     const teamId = typeof req.query.teamId === 'string' && req.query.teamId !== 'all' ? req.query.teamId : null;
 
     const rows = teamId
