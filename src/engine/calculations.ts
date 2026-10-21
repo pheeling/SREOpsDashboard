@@ -8,11 +8,12 @@
 import type {
   CapacityBuckets,
   CapacityReport,
+  DashboardScope,
   DashboardState,
-  GlobalConfig,
   OwnershipModel,
   Service,
   ServiceBreakdown,
+  TeamConfig,
 } from "./types";
 
 /** Divisor applied to a service's hours once it has been automated ("1/3 Automation Rule"). */
@@ -114,20 +115,28 @@ export function getTotalRequiredHours(services: Service[]): number {
   return services.reduce((sum, service) => sum + getRequiredHours(service), 0);
 }
 
-export function getTotalAvailableHours(globalConfig: GlobalConfig): number {
-  return finiteNumber(globalConfig.fteCount) * finiteNumber(globalConfig.weeklyHours);
+export function getTotalAvailableHours(teamConfig: TeamConfig): number {
+  return finiteNumber(teamConfig.fteCount) * finiteNumber(teamConfig.weeklyHours);
 }
 
-export function getEffectiveCapacityHours(globalConfig: GlobalConfig): number {
+export function getEffectiveCapacityHours(teamConfig: TeamConfig): number {
   const efficiencyFactor = Math.min(
     1,
-    Math.max(0, finiteNumber(globalConfig.capacityEfficiencyFactor, DEFAULT_CAPACITY_EFFICIENCY_FACTOR)),
+    Math.max(0, finiteNumber(teamConfig.effectiveCapacityPercentage, DEFAULT_CAPACITY_EFFICIENCY_FACTOR)),
   );
-  return getTotalAvailableHours(globalConfig) * efficiencyFactor;
+  return getTotalAvailableHours(teamConfig) * efficiencyFactor;
 }
 
-export function getEffectiveAvailableHours(state: DashboardState): number {
-  return getTotalAvailableHours(state.globalConfig);
+function getScopedTeams(state: DashboardState, scope: DashboardScope): TeamConfig[] {
+  return scope === "all" ? state.teams : state.teams.filter((team) => team.id === scope);
+}
+
+function getScopedServices(state: DashboardState, scope: DashboardScope): Service[] {
+  return scope === "all" ? state.services : state.services.filter((service) => service.teamId === scope);
+}
+
+export function getEffectiveAvailableHours(state: DashboardState, scope: DashboardScope = state.selectedTeamId): number {
+  return getScopedTeams(state, scope).reduce((sum, team) => sum + getEffectiveCapacityHours(team), 0);
 }
 
 export function getServiceBreakdown(service: Service): ServiceBreakdown {
@@ -151,28 +160,63 @@ export function getServiceBreakdown(service: Service): ServiceBreakdown {
  * On-Call & Monitoring use fixed shares of raw capacity; Innovation & Toil
  * Reduction absorbs whatever effective capacity remains (never negative).
  */
-export function getCapacityBuckets(state: DashboardState): CapacityBuckets {
-  const effectiveCapacityHours = getEffectiveCapacityHours(state.globalConfig);
-  const effectiveAvailableHours = getEffectiveAvailableHours(state);
-  const maintenance = getTotalRequiredHours(state.services);
-
+function getTeamCapacityBuckets(team: TeamConfig, services: Service[]): CapacityBuckets {
+  const effectiveCapacityHours = getEffectiveCapacityHours(team);
+  const maintenance = getTotalRequiredHours(services);
   const emergencyResponse = effectiveCapacityHours * EMERGENCY_RESPONSE_SHARE;
   const testingScaling = effectiveCapacityHours * TESTING_SCALING_SHARE;
   const securityCompliance = effectiveCapacityHours * SECURITY_COMPLIANCE_SHARE;
   const onCallMonitoring = effectiveCapacityHours * ON_CALL_MONITORING_SHARE;
-
   const allocated = maintenance + emergencyResponse + testingScaling + securityCompliance + onCallMonitoring;
-  const rawInnovation = Math.max(0, effectiveAvailableHours - allocated);
-  const innovation = state.globalConfig.hasInterruptShield ? rawInnovation : rawInnovation * (1 - CONTEXT_SWITCH_DRAG);
+  const rawInnovation = Math.max(0, effectiveCapacityHours - allocated);
+  const innovation = team.hasInterruptShield ? rawInnovation : rawInnovation * (1 - CONTEXT_SWITCH_DRAG);
 
   return { innovation, maintenance, emergencyResponse, testingScaling, securityCompliance, onCallMonitoring };
 }
 
+export function getCapacityBuckets(state: DashboardState, scope: DashboardScope = state.selectedTeamId): CapacityBuckets {
+  return getScopedTeams(state, scope).reduce(
+    (total, team) => {
+      const services = state.services.filter((service) => service.teamId === team.id);
+      const buckets = getTeamCapacityBuckets(team, services);
+      return {
+        innovation: total.innovation + buckets.innovation,
+        maintenance: total.maintenance + buckets.maintenance,
+        emergencyResponse: total.emergencyResponse + buckets.emergencyResponse,
+        testingScaling: total.testingScaling + buckets.testingScaling,
+        securityCompliance: total.securityCompliance + buckets.securityCompliance,
+        onCallMonitoring: total.onCallMonitoring + buckets.onCallMonitoring,
+      };
+    },
+    { innovation: 0, maintenance: 0, emergencyResponse: 0, testingScaling: 0, securityCompliance: 0, onCallMonitoring: 0 },
+  );
+}
+
+function getContextSwitchImpact(
+  state: DashboardState,
+  scope: DashboardScope,
+): { lost: number; recovered: number } {
+  return getScopedTeams(state, scope).reduce(
+    (impact, team) => {
+      const innovation = getTeamCapacityBuckets(
+        team,
+        state.services.filter((service) => service.teamId === team.id),
+      ).innovation;
+      const contextHours = team.hasInterruptShield
+        ? innovation * CONTEXT_SWITCH_DRAG
+        : (innovation / (1 - CONTEXT_SWITCH_DRAG)) * CONTEXT_SWITCH_DRAG;
+      if (team.hasInterruptShield) impact.recovered += contextHours;
+      else impact.lost += contextHours;
+      return impact;
+    },
+    { lost: 0, recovered: 0 },
+  );
+}
+
 /** Raw innovation hours lost to (or, with the shield, recovered from) context-switching drag. */
-export function getRawContextSwitchHours(state: DashboardState): number {
-  const buckets = getCapacityBuckets(state);
-  const raw = state.globalConfig.hasInterruptShield ? buckets.innovation : buckets.innovation / (1 - CONTEXT_SWITCH_DRAG);
-  return raw * CONTEXT_SWITCH_DRAG;
+export function getRawContextSwitchHours(state: DashboardState, scope: DashboardScope = state.selectedTeamId): number {
+  const impact = getContextSwitchImpact(state, scope);
+  return impact.lost + impact.recovered;
 }
 
 /**
@@ -184,12 +228,12 @@ export function getRawContextSwitchHours(state: DashboardState): number {
 export function getHiringCost(
   operationalHours: number,
   effectiveAvailableHours: number,
-  globalConfig: GlobalConfig,
+  teamConfig: TeamConfig,
 ): number {
   operationalHours = finiteNumber(operationalHours);
   effectiveAvailableHours = finiteNumber(effectiveAvailableHours);
-  const weeklyHours = finiteNumber(globalConfig.weeklyHours);
-  const annualSalary = finiteNumber(globalConfig.annualSalary);
+  const weeklyHours = finiteNumber(teamConfig.weeklyHours);
+  const annualSalary = finiteNumber(teamConfig.annualSalaryBaseline);
   const toilDeficit = Math.max(0, operationalHours - RED_ZONE_THRESHOLD * effectiveAvailableHours);
   if (toilDeficit <= 0 || weeklyHours <= 0) return 0;
   return (toilDeficit / (RED_ZONE_THRESHOLD * weeklyHours)) * annualSalary;
@@ -202,7 +246,7 @@ export interface UpskillingDividend {
 }
 
 /** Estimates the weekly effort penalty and annual value recovered by closing expertise gaps. */
-export function calculateUpskillingDividend(services: Service[], globalConfig: GlobalConfig): UpskillingDividend {
+export function calculateUpskillingDividend(services: Service[], teamConfig: TeamConfig): UpskillingDividend {
   let hoursRecoveredPerWeek = 0;
   const affectedServices: string[] = [];
 
@@ -220,9 +264,9 @@ export function calculateUpskillingDividend(services: Service[], globalConfig: G
     }
   }
 
-  const weeklyHours = finiteNumber(globalConfig.weeklyHours);
+  const weeklyHours = finiteNumber(teamConfig.weeklyHours);
   const annualizedValue =
-    weeklyHours > 0 ? (hoursRecoveredPerWeek / weeklyHours) * finiteNumber(globalConfig.annualSalary) : 0;
+    weeklyHours > 0 ? (hoursRecoveredPerWeek / weeklyHours) * finiteNumber(teamConfig.annualSalaryBaseline) : 0;
 
   return { hoursRecoveredPerWeek, annualizedValue, affectedServices };
 }
@@ -241,13 +285,16 @@ function getOperationalLoadRatio(operationalLoadHours: number, effectiveAvailabl
  * Runs the full engine over the current dashboard state, producing every
  * derived number the UI needs (buckets, red-zone status, hiring cost, etc).
  */
-export function computeCapacityReport(state: DashboardState): CapacityReport {
-  const { services, globalConfig } = state;
-
-  const totalAvailableHours = getTotalAvailableHours(globalConfig);
-  const effectiveAvailableHours = getEffectiveAvailableHours(state);
+export function computeCapacityReport(
+  state: DashboardState,
+  scope: DashboardScope = state.selectedTeamId,
+): CapacityReport {
+  const teams = getScopedTeams(state, scope);
+  const services = getScopedServices(state, scope);
+  const totalAvailableHours = teams.reduce((sum, team) => sum + getTotalAvailableHours(team), 0);
+  const effectiveAvailableHours = getEffectiveAvailableHours(state, scope);
   const totalRequiredHours = getTotalRequiredHours(services);
-  const buckets = getCapacityBuckets(state);
+  const buckets = getCapacityBuckets(state, scope);
   // Operational load is routine toil plus reactive/admin reserves only;
   // engineering capacity for automation and toil reduction stays in innovation.
   const operationalLoadHours =
@@ -257,12 +304,24 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
     buckets.securityCompliance +
     buckets.onCallMonitoring;
   const operationalLoadRatio = getOperationalLoadRatio(operationalLoadHours, effectiveAvailableHours);
-  const contextSwitchHours = getRawContextSwitchHours(state);
-  const hasShield = Boolean(globalConfig.hasInterruptShield);
+  const contextSwitchImpact = getContextSwitchImpact(state, scope);
+  const teamDeficits = teams.map((team) => {
+    const teamServices = services.filter((service) => service.teamId === team.id);
+    const teamMaintenance = getTotalRequiredHours(teamServices);
+    const teamEffectiveCapacity = getEffectiveCapacityHours(team);
+    const teamOperationalLoad =
+      teamMaintenance +
+      teamEffectiveCapacity *
+        (EMERGENCY_RESPONSE_SHARE + TESTING_SCALING_SHARE + SECURITY_COMPLIANCE_SHARE + ON_CALL_MONITORING_SHARE);
+    return {
+      deficit: getDeficitHours(teamOperationalLoad, teamEffectiveCapacity),
+      hiringCost: getHiringCost(teamOperationalLoad, teamEffectiveCapacity, team),
+    };
+  });
 
   return {
-    cognitiveOverheadHours: hasShield ? 0 : contextSwitchHours,
-    recoveredInnovationHours: hasShield ? contextSwitchHours : 0,
+    cognitiveOverheadHours: contextSwitchImpact.lost,
+    recoveredInnovationHours: contextSwitchImpact.recovered,
     services: services.map(getServiceBreakdown),
     totalAvailableHours,
     effectiveAvailableHours,
@@ -271,8 +330,8 @@ export function computeCapacityReport(state: DashboardState): CapacityReport {
     operationalLoadHours,
     operationalLoadRatio,
     isRedZone: operationalLoadRatio > RED_ZONE_THRESHOLD,
-    hiringCost: getHiringCost(operationalLoadHours, effectiveAvailableHours, globalConfig),
-    deficitHours: getDeficitHours(operationalLoadHours, effectiveAvailableHours),
+    hiringCost: teamDeficits.reduce((sum, item) => sum + item.hiringCost, 0),
+    deficitHours: teamDeficits.reduce((sum, item) => sum + item.deficit, 0),
   };
 }
 
@@ -316,10 +375,10 @@ export function getAutomationRoiHours(service: Service): number {
   return withoutAutomation - withAutomation;
 }
 
-export function getAutomationRoiDollars(service: Service, globalConfig: GlobalConfig): number {
+export function getAutomationRoiDollars(service: Service, teamConfig: TeamConfig): number {
   const hoursSavedPerWeek = getAutomationRoiHours(service);
-  const weeklyHours = finiteNumber(globalConfig.weeklyHours);
-  return weeklyHours > 0 ? (hoursSavedPerWeek / weeklyHours) * finiteNumber(globalConfig.annualSalary) : 0;
+  const weeklyHours = finiteNumber(teamConfig.weeklyHours);
+  return weeklyHours > 0 ? (hoursSavedPerWeek / weeklyHours) * finiteNumber(teamConfig.annualSalaryBaseline) : 0;
 }
 
 /** Share of a service's base hours eliminated by a stabilization sprint. */
@@ -411,14 +470,18 @@ export interface StabilizationSprintScenario {
  * reports the capacity picture before and after. Never mutates the input.
  */
 export function simulateStabilizationSprint(state: DashboardState): StabilizationSprintScenario | null {
-  const [top] = getParetoToilRanking(state.services).entries;
+  const services = getScopedServices(state, state.selectedTeamId);
+  const [top] = getParetoToilRanking(services).entries;
   if (!top) return null;
+  const serviceTeam = state.teams.find(
+    (team) => team.id === services.find((service) => service.id === top.id)?.teamId,
+  );
   const before = computeCapacityReport(state);
   const after = computeCapacityReport(applyStabilizationSprint(state, top.id));
   return {
     serviceId: top.id,
     serviceName: top.name,
-    sprintHours: finiteNumber(state.globalConfig.weeklyHours) * STABILIZATION_SPRINT_WEEKS,
+    sprintHours: finiteNumber(serviceTeam?.weeklyHours) * STABILIZATION_SPRINT_WEEKS,
     hoursSavedPerWeek: before.totalRequiredHours - after.totalRequiredHours,
     before,
     after,

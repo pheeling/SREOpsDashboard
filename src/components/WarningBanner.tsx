@@ -4,12 +4,17 @@ import { computeCapacityReport } from "../engine/calculations";
 export function WarningBanner() {
   const { state } = useDashboard();
   const report = computeCapacityReport(state);
+  const teams =
+    state.selectedTeamId === "all"
+      ? state.teams
+      : state.teams.filter((team) => team.id === state.selectedTeamId);
+  const hasSmallTeam = teams.some((team) => team.fteCount < 4);
 
-  if (!report.isRedZone && state.globalConfig.fteCount >= 4) return null;
+  if (!report.isRedZone && !hasSmallTeam) return null;
 
   return (
     <>
-      {state.globalConfig.fteCount < 4 && (
+      {hasSmallTeam && (
         <div className="warning-banner warning-banner--staffing" role="alert" data-testid="staffing-warning">
           Warning: An SRE team with fewer than 4 engineers cannot sustain a healthy 24/7 on-call rotation without
           severe burnout, regardless of service volume.

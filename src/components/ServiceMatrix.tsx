@@ -51,6 +51,8 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
 
   const handleChangeOwnership = (serviceId: string, ownershipModel: OwnershipModel) =>
     dispatch({ type: "SET_OWNERSHIP", serviceId, ownershipModel });
+  const handleChangeTeam = (serviceId: string, teamId: string) =>
+    dispatch({ type: "ASSIGN_SERVICE_TEAM", serviceId, teamId });
   const handleDelete = (serviceId: string) => dispatch({ type: "DELETE_SERVICE", serviceId });
   const handleDeleteAll = () => {
     if (window.confirm("Delete all services from the catalog?")) {
@@ -59,15 +61,19 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
   };
   const handleRestoreDefaults = () => dispatch({ type: "RESTORE_DEFAULT_SERVICES" });
 
-  const activeCount = state.services.filter((s) => s.isActive).length;
-  const totalRequiredHours = getTotalRequiredHours(state.services);
+  const scopedServices =
+    state.selectedTeamId === "all"
+      ? state.services
+      : state.services.filter((service) => service.teamId === state.selectedTeamId);
+  const activeCount = scopedServices.filter((s) => s.isActive).length;
+  const totalRequiredHours = getTotalRequiredHours(scopedServices);
   const topToilIds = new Set(
-    getParetoToilRanking(state.services)
+    getParetoToilRanking(scopedServices)
       .entries.filter((entry) => entry.isTopContributor)
       .map((entry) => entry.id),
   );
   const avgHoursPerService = activeCount > 0 ? totalRequiredHours / activeCount : 0;
-  const visibleServices = state.services.filter((service) => {
+  const visibleServices = scopedServices.filter((service) => {
     if (selectedQuadrantFilter && (!service.isActive || getServiceQuadrantKey(service) !== selectedQuadrantFilter)) {
       return false;
     }
@@ -99,7 +105,7 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
     <section className="dashboard-card service-matrix" aria-label="Service Matrix">
       <div className="service-matrix__toolbar">
         <h2>
-          Services ({activeCount}/{state.services.length} active)
+          Services ({activeCount}/{scopedServices.length} active)
         </h2>
         <p className="service-matrix__scaling-note" data-testid="service-scaling-note">
           {totalRequiredHours.toFixed(1)} required hrs/wk across {activeCount} active service
@@ -118,7 +124,7 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
           type="button"
           className="service-matrix__delete-all"
           onClick={handleDeleteAll}
-          disabled={state.services.length === 0}
+          disabled={scopedServices.length === 0}
           data-testid="delete-all-services"
         >
           Delete All
@@ -179,7 +185,7 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
       </label>
 
       <CriticalityToilQuadrant
-        services={state.services}
+        services={scopedServices}
         selectedQuadrantFilter={selectedQuadrantFilter}
         onSelectQuadrant={(quadrant) =>
           setSelectedQuadrantFilter((current) => (current === quadrant ? null : quadrant))
@@ -199,7 +205,7 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
         </button>
       </div>
 
-      {state.services.length === 0 ? (
+      {scopedServices.length === 0 ? (
         <div className="service-matrix__empty" data-testid="services-empty-state">
           <p>No active services in catalog.</p>
           <button
@@ -230,6 +236,7 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
                 <ServiceCard
                   key={service.id}
                   service={service}
+                  teams={state.teams}
                   isExpanded={expandedCardIds.has(service.id)}
                   onToggleExpanded={toggleExpandedCard}
                   isTopToilContributor={topToilIds.has(service.id)}
@@ -240,6 +247,7 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
                   onChangeSloStatus={handleChangeSloStatus}
                   onChangeWeight={handleChangeWeight}
                   onChangeOwnership={handleChangeOwnership}
+                  onChangeTeam={handleChangeTeam}
                   onDelete={handleDelete}
                 />
               ))}

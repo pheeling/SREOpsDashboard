@@ -7,7 +7,11 @@ export function HandbackSimulator() {
 
   if (!report.isRedZone) return null;
 
-  const candidates = getHandbackCandidates(state.services);
+  const services =
+    state.selectedTeamId === "all"
+      ? state.services
+      : state.services.filter((service) => service.teamId === state.selectedTeamId);
+  const candidates = getHandbackCandidates(services);
 
   return (
     <section className="dashboard-card handback-simulator" aria-label="Handback Simulator" data-testid="handback-simulator">

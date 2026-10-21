@@ -13,7 +13,11 @@ export function ParetoToilPanel() {
   const { state, dispatch } = useDashboard();
   const [showScenario, setShowScenario] = useState(false);
 
-  const pareto = getParetoToilRanking(state.services);
+  const services =
+    state.selectedTeamId === "all"
+      ? state.services
+      : state.services.filter((service) => service.teamId === state.selectedTeamId);
+  const pareto = getParetoToilRanking(services);
   const scenario = showScenario ? simulateStabilizationSprint(state) : null;
 
   const handleApply = () => {

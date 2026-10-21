@@ -460,6 +460,7 @@ describe("App", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(sidebarLink("Team & Capacity Settings"));
+    fireEvent.change(screen.getByLabelText("Effective Capacity (%)"), { target: { value: "100" } });
     fireEvent.change(screen.getByLabelText("FTE Count slider"), { target: { value: "50" } });
     await showServices(user);
 

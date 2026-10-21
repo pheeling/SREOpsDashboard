@@ -10,7 +10,28 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
 export function HiringCostWidget() {
   const { state } = useDashboard();
   const report = computeCapacityReport(state);
-  const dividend = calculateUpskillingDividend(state.services, state.globalConfig);
+  const scopedServices =
+    state.selectedTeamId === "all"
+      ? state.services
+      : state.services.filter((service) => service.teamId === state.selectedTeamId);
+  const scopedTeams =
+    state.selectedTeamId === "all"
+      ? state.teams
+      : state.teams.filter((team) => team.id === state.selectedTeamId);
+  const dividend = scopedTeams.reduce(
+    (total, team) => {
+      const teamDividend = calculateUpskillingDividend(
+        scopedServices.filter((service) => service.teamId === team.id),
+        team,
+      );
+      return {
+        hoursRecoveredPerWeek: total.hoursRecoveredPerWeek + teamDividend.hoursRecoveredPerWeek,
+        annualizedValue: total.annualizedValue + teamDividend.annualizedValue,
+        affectedServices: [...total.affectedServices, ...teamDividend.affectedServices],
+      };
+    },
+    { hoursRecoveredPerWeek: 0, annualizedValue: 0, affectedServices: [] as string[] },
+  );
 
   return (
     <section className="dashboard-card hiring-cost-widget" aria-label="Financial Impact: Hiring vs Internal Upskilling" data-testid="hiring-cost-widget" id="search-target-upskilling-dividend">

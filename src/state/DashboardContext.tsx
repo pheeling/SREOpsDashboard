@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { Dispatch, ReactNode } from "react";
-import type { DashboardState, GlobalConfig } from "../engine/types";
+import type { DashboardState, TeamConfig } from "../engine/types";
 import { cloneDefaultServices } from "../engine/seedServices";
 import { DEFAULT_ANNUAL_SALARY, getOwnershipModel, OWNERSHIP_LABELS } from "../engine/calculations";
 import { dashboardReducer, type DashboardAction } from "./dashboardReducer";
@@ -13,14 +13,17 @@ export interface AuditLogEntry {
 }
 
 export const INITIAL_STATE: DashboardState = {
-  globalConfig: {
+  teams: [{
+    id: "default-team",
+    name: "Core SRE",
     fteCount: 5,
     weeklyHours: 40,
-    capacityEfficiencyFactor: 0.8,
+    effectiveCapacityPercentage: 0.8,
     hasInterruptShield: false,
-    annualSalary: DEFAULT_ANNUAL_SALARY,
-  },
+    annualSalaryBaseline: DEFAULT_ANNUAL_SALARY,
+  }],
   services: cloneDefaultServices(),
+  selectedTeamId: "all",
 };
 
 interface DashboardContextValue {
@@ -75,7 +78,10 @@ function getAuditMessages(state: DashboardState, action: DashboardAction): strin
     case "RESTORE_DEFAULT_SERVICES":
       return ["Restored default services"];
     case "UPDATE_GLOBAL_CONFIG":
-      return getGlobalConfigAuditMessages(state.globalConfig, action.payload);
+      return getGlobalConfigAuditMessages(
+        state.teams.find((team) => team.id === (state.selectedTeamId === "all" ? state.teams[0]?.id : state.selectedTeamId))!,
+        action.payload,
+      );
     case "RESET":
       return ["Reset dashboard configuration"];
     default:
@@ -84,27 +90,27 @@ function getAuditMessages(state: DashboardState, action: DashboardAction): strin
 }
 
 function getGlobalConfigAuditMessages(
-  config: GlobalConfig,
-  updates: Partial<GlobalConfig>,
+  config: TeamConfig,
+  updates: Partial<TeamConfig>,
 ): string[] {
-  const labels: Partial<Record<keyof GlobalConfig, string>> = {
+  const labels: Partial<Record<keyof TeamConfig, string>> = {
     fteCount: "FTE Count",
     weeklyHours: "Weekly Hours per FTE",
-    capacityEfficiencyFactor: "Effective Capacity",
-    annualSalary: "Annual Salary Baseline",
+    effectiveCapacityPercentage: "Effective Capacity",
+    annualSalaryBaseline: "Annual Salary Baseline",
   };
 
-  return (Object.keys(updates) as (keyof GlobalConfig)[])
+  return (Object.keys(updates) as (keyof TeamConfig)[])
     .filter((key) => config[key] !== updates[key])
     .map((key) => {
       const value = updates[key];
       if (key === "hasInterruptShield") {
         return `Toggled Dedicated Interrupt Shield: ${value ? "On" : "Off"}`;
       }
-      if (key === "capacityEfficiencyFactor") {
+      if (key === "effectiveCapacityPercentage") {
         return `Updated Effective Capacity to ${Number(value) * 100}%`;
       }
-      if (key === "annualSalary") {
+      if (key === "annualSalaryBaseline") {
         return `Updated Annual Salary Baseline to ${new Intl.NumberFormat("en-US", {
           style: "currency",
           currency: "USD",

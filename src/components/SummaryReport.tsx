@@ -9,11 +9,15 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
 
 export function SummaryReport() {
   const { state } = useDashboard();
-  const { globalConfig, services } = state;
+  const services =
+    state.selectedTeamId === "all"
+      ? state.services
+      : state.services.filter((service) => service.teamId === state.selectedTeamId);
+  const teamById = new Map(state.teams.map((team) => [team.id, team]));
 
   const manualServices = services.filter((s) => s.isActive && !s.isAutomated);
   const totalRoiDollars = manualServices.reduce(
-    (sum, service) => sum + getAutomationRoiDollars(service, globalConfig),
+    (sum, service) => sum + getAutomationRoiDollars(service, teamById.get(service.teamId)!),
     0,
   );
 
@@ -47,7 +51,7 @@ export function SummaryReport() {
                 </span>
               </td>
               <td>{getAutomationRoiHours(service).toFixed(2)}</td>
-              <td>{currencyFormatter.format(getAutomationRoiDollars(service, globalConfig))}</td>
+              <td>{currencyFormatter.format(getAutomationRoiDollars(service, teamById.get(service.teamId)!))}</td>
             </tr>
           ))}
         </tbody>

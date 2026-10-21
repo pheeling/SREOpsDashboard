@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { DashboardState, Service } from "./types";
+import type { DashboardState, Service, TeamConfig } from "./types";
 import {
   AUTOMATION_REDUCTION_FACTOR,
   DEFAULT_CAPACITY_EFFICIENCY_FACTOR,
@@ -32,6 +32,7 @@ function makeService(overrides: Partial<Service> = {}): Service {
   return {
     id: "svc",
     name: "Service",
+    teamId: "default-team",
     deployHours: 5,
     maintenanceHours: 5,
     isActive: true,
@@ -41,6 +42,22 @@ function makeService(overrides: Partial<Service> = {}): Service {
     sloStatus: "healthy",
     ...overrides,
   };
+}
+
+function makeTeam(overrides: Partial<TeamConfig> = {}): TeamConfig {
+  return {
+    id: "default-team",
+    name: "Core SRE",
+    fteCount: 5,
+    weeklyHours: 40,
+    effectiveCapacityPercentage: DEFAULT_CAPACITY_EFFICIENCY_FACTOR,
+    annualSalaryBaseline: 150_000,
+    ...overrides,
+  };
+}
+
+function makeState(team: Partial<TeamConfig>, services: Service[] = []): DashboardState {
+  return { teams: [makeTeam(team)], services, selectedTeamId: "all" };
 }
 
 describe("getBaseHours", () => {
@@ -135,7 +152,7 @@ describe("getRequiredHours", () => {
 
 describe("getTotalAvailableHours / getTotalRequiredHours", () => {
   it("multiplies FTE count by weekly hours", () => {
-    expect(getTotalAvailableHours({ fteCount: 5, weeklyHours: 40, annualSalary: 150000 })).toBe(200);
+    expect(getTotalAvailableHours(makeTeam())).toBe(200);
   });
 
   it("sums required hours across all active services and skips inactive ones", () => {
@@ -148,7 +165,7 @@ describe("getTotalAvailableHours / getTotalRequiredHours", () => {
 
   it("treats invalid FTE capacity and criticality values defensively", () => {
     expect(
-      getTotalAvailableHours({ fteCount: Number.NaN, weeklyHours: undefined, annualSalary: 150000 } as unknown as DashboardState["globalConfig"]),
+      getTotalAvailableHours(makeTeam({ fteCount: Number.NaN, weeklyHours: undefined as unknown as number })),
     ).toBe(0);
     const service = makeService({
       deployHours: Number.NaN,
@@ -161,41 +178,28 @@ describe("getTotalAvailableHours / getTotalRequiredHours", () => {
 
 describe("effective capacity", () => {
   it("defaults to 80% of contracted hours and honors a configured efficiency factor", () => {
-    expect(getEffectiveCapacityHours({ fteCount: 5, weeklyHours: 40, annualSalary: 150000 })).toBe(160);
+    expect(getEffectiveCapacityHours(makeTeam())).toBe(160);
     expect(
       getEffectiveCapacityHours({
-        fteCount: 5,
-        weeklyHours: 40,
-        capacityEfficiencyFactor: 0.5,
-        annualSalary: 150000,
+        ...makeTeam(),
+        effectiveCapacityPercentage: 0.5,
       }),
     ).toBe(100);
     expect(DEFAULT_CAPACITY_EFFICIENCY_FACTOR).toBe(0.8);
   });
 
   it("uses effective capacity for fixed bucket allocations and utilization", () => {
-    const report = computeCapacityReport({
-      globalConfig: { fteCount: 5, weeklyHours: 40, annualSalary: 150000 },
-      services: [],
-    });
+    const report = computeCapacityReport(makeState({}));
 
     expect(report.totalAvailableHours).toBe(200);
     expect(report.effectiveAvailableHours).toBe(160);
     expect(report.buckets.emergencyResponse).toBe(16);
-    expect(report.buckets.innovation).toBe(112);
+    expect(report.buckets.innovation).toBeCloseTo(89.6);
     expect(report.operationalLoadRatio).toBeCloseTo(0.3);
   });
 
   it("uses the configured factor for reserves and utilization", () => {
-    const report = computeCapacityReport({
-      globalConfig: {
-        fteCount: 5,
-        weeklyHours: 40,
-        capacityEfficiencyFactor: 0.5,
-        annualSalary: 150000,
-      },
-      services: [],
-    });
+    const report = computeCapacityReport(makeState({ effectiveCapacityPercentage: 0.5 }));
 
     expect(report.effectiveAvailableHours).toBe(100);
     expect(report.buckets.emergencyResponse).toBe(10);
@@ -204,34 +208,28 @@ describe("effective capacity", () => {
 });
 
 describe("getEffectiveAvailableHours", () => {
-  it("remains equal to FTE capacity regardless of service expertise", () => {
-    const state: DashboardState = {
-      globalConfig: { fteCount: 5, weeklyHours: 40, annualSalary: 150000 },
-      services: [makeService({ deployHours: 10, maintenanceHours: 0, hasExpertise: false })],
-    };
-    expect(getEffectiveAvailableHours(state)).toBe(200);
+  it("remains equal to effective team capacity regardless of service expertise", () => {
+    const state = makeState({}, [makeService({ deployHours: 10, maintenanceHours: 0, hasExpertise: false })]);
+    expect(getEffectiveAvailableHours(state)).toBe(160);
     expect(getEffectiveAvailableHours({
       ...state,
       services: state.services.map((service) => ({ ...service, hasExpertise: true })),
-    })).toBe(200);
+    })).toBe(160);
   });
 });
 
 describe("getCapacityBuckets", () => {
   it("reserves the Security/Compliance and On-Call/Monitoring shares from effective capacity", () => {
-    const state: DashboardState = {
-      globalConfig: { fteCount: 10, weeklyHours: 40, annualSalary: 150000 },
-      services: [],
-    };
+    const state = makeState({ fteCount: 10 });
     const buckets = getCapacityBuckets(state);
-    const effectiveCapacityHours = getTotalAvailableHours(state.globalConfig) * DEFAULT_CAPACITY_EFFICIENCY_FACTOR;
+    const effectiveCapacityHours = getEffectiveCapacityHours(state.teams[0]);
     expect(buckets.securityCompliance).toBeCloseTo(effectiveCapacityHours * SECURITY_COMPLIANCE_SHARE);
     expect(buckets.onCallMonitoring).toBeCloseTo(effectiveCapacityHours * ON_CALL_MONITORING_SHARE);
   });
 });
 
 describe("getHiringCost", () => {
-  const globalConfig = { fteCount: 5, weeklyHours: 40, annualSalary: 150000 };
+  const globalConfig = makeTeam();
 
   it("returns 0 when operational load is at or below 50% of available hours", () => {
     expect(getHiringCost(100, 200, globalConfig)).toBe(0);
@@ -259,7 +257,7 @@ describe("getHiringCost", () => {
 });
 
 describe("calculateUpskillingDividend", () => {
-  const globalConfig = { fteCount: 5, weeklyHours: 40, annualSalary: 150000 };
+  const globalConfig = makeTeam();
 
   it("aggregates the 1.25x penalty for active services without expertise", () => {
     const services = [
@@ -300,33 +298,62 @@ describe("getAutomationRoiHours", () => {
 describe("getAutomationRoiDollars", () => {
   it("returns 0 when weekly hours are zero or invalid", () => {
     const service = makeService();
-    expect(getAutomationRoiDollars(service, { fteCount: 5, weeklyHours: 0, annualSalary: 150000 })).toBe(0);
-    expect(getAutomationRoiDollars(service, { fteCount: 5, weeklyHours: Number.NaN, annualSalary: 150000 })).toBe(0);
+    expect(getAutomationRoiDollars(service, makeTeam({ weeklyHours: 0 }))).toBe(0);
+    expect(getAutomationRoiDollars(service, makeTeam({ weeklyHours: Number.NaN }))).toBe(0);
   });
 });
 
 describe("computeCapacityReport - SRE scenario validation", () => {
-  it("counts routine and reactive work as operational load, not innovation capacity", () => {
-    const report = computeCapacityReport({
-      globalConfig: { fteCount: 10, weeklyHours: 40, annualSalary: 150000 },
-      services: [],
+  it("isolates team calculations and aggregates organization capacity and independent hiring deficits", () => {
+    const platform = makeTeam({ id: "platform", name: "Platform", fteCount: 1 });
+    const runtime = makeTeam({
+      id: "runtime",
+      name: "Runtime",
+      fteCount: 2,
+      effectiveCapacityPercentage: 0.5,
     });
+    const state: DashboardState = {
+      teams: [platform, runtime],
+      selectedTeamId: "all",
+      services: [
+        makeService({ id: "platform-service", teamId: "platform", deployHours: 0, maintenanceHours: 20 }),
+        makeService({ id: "runtime-service", teamId: "runtime", deployHours: 0, maintenanceHours: 0 }),
+      ],
+    };
 
-    expect(report.operationalLoadHours).toBe(120);
-    expect(report.buckets.innovation).toBe(280);
+    const platformReport = computeCapacityReport(state, "platform");
+    const organizationReport = computeCapacityReport(state, "all");
+
+    expect(platformReport.totalAvailableHours).toBe(40);
+    expect(platformReport.effectiveAvailableHours).toBe(32);
+    expect(platformReport.totalRequiredHours).toBe(20);
+    expect(platformReport.services.map((service) => service.id)).toEqual(["platform-service"]);
+    expect(organizationReport.totalAvailableHours).toBe(120);
+    expect(organizationReport.effectiveAvailableHours).toBe(72);
+    expect(organizationReport.totalRequiredHours).toBe(20);
+    expect(organizationReport.deficitHours).toBeCloseTo(platformReport.deficitHours);
+    expect(organizationReport.deficitHours).toBeGreaterThan(
+      getDeficitHours(organizationReport.operationalLoadHours, organizationReport.effectiveAvailableHours),
+    );
+    expect(organizationReport.hiringCost).toBeCloseTo(platformReport.hiringCost);
+  });
+
+  it("counts routine and reactive work as operational load, not innovation capacity", () => {
+    const report = computeCapacityReport(makeState({ fteCount: 10 }));
+
+    expect(report.operationalLoadHours).toBe(96);
+    expect(report.buckets.innovation).toBeCloseTo(179.2);
     expect(report.operationalLoadRatio).toBe(0.3);
     expect(report.isRedZone).toBe(false);
   });
 
   it("returns finite zero ratios when capacity and input values are invalid", () => {
-    const report = computeCapacityReport({
-      globalConfig: {
-        fteCount: 0,
-        weeklyHours: Number.NaN,
-        annualSalary: 150000,
-      },
-      services: [makeService({ deployHours: undefined as unknown as number, maintenanceHours: Number.NaN })],
-    });
+    const report = computeCapacityReport(
+      makeState(
+        { fteCount: 0, weeklyHours: Number.NaN },
+        [makeService({ deployHours: undefined as unknown as number, maintenanceHours: Number.NaN })],
+      ),
+    );
 
     expect(report.totalAvailableHours).toBe(0);
     expect(report.totalRequiredHours).toBe(0);
@@ -336,20 +363,14 @@ describe("computeCapacityReport - SRE scenario validation", () => {
   });
 
   it("marks non-zero workload as overloaded when total capacity is zero", () => {
-    const report = computeCapacityReport({
-      globalConfig: { fteCount: 0, weeklyHours: 40, annualSalary: 150000 },
-      services: [makeService({ deployHours: 1, maintenanceHours: 0 })],
-    });
+    const report = computeCapacityReport(makeState({ fteCount: 0 }, [makeService({ deployHours: 1, maintenanceHours: 0 })]));
 
     expect(report.operationalLoadRatio).toBe(1);
     expect(report.isRedZone).toBe(true);
   });
 
   it("recalculates bucket workload when automation and expertise change", () => {
-    const state: DashboardState = {
-      globalConfig: { fteCount: 5, weeklyHours: 40, annualSalary: 150000 },
-      services: [makeService({ deployHours: 60, maintenanceHours: 30, hasExpertise: false })],
-    };
+    const state = makeState({}, [makeService({ deployHours: 60, maintenanceHours: 30, hasExpertise: false })]);
     const manualWithoutExpertise = computeCapacityReport(state);
     const automatedWithExpertise = computeCapacityReport({
       ...state,
@@ -368,10 +389,7 @@ describe("computeCapacityReport - SRE scenario validation", () => {
       hasExpertise: false,
       isAutomated: false,
     }));
-    const state: DashboardState = {
-      globalConfig: { fteCount: 2, weeklyHours: 40, annualSalary: 150000 },
-      services,
-    };
+    const state = makeState({ fteCount: 2 }, services);
 
     const report = computeCapacityReport(state);
 
@@ -389,10 +407,7 @@ describe("computeCapacityReport - SRE scenario validation", () => {
     }));
     // With the default capacity discount and fixed operational reserves,
     // a larger automated team is needed to stay under the 50% Red Zone line.
-    const state: DashboardState = {
-      globalConfig: { fteCount: 100, weeklyHours: 40, annualSalary: 150000 },
-      services,
-    };
+    const state = makeState({ fteCount: 100 }, services);
 
     const report = computeCapacityReport(state);
 
@@ -405,16 +420,10 @@ describe("computeCapacityReport - SRE scenario validation", () => {
   });
 
   it("Scenario 3: Deactivating services removes their contribution entirely", () => {
-    const allActive: DashboardState = {
-      globalConfig: { fteCount: 10, weeklyHours: 40, annualSalary: 150000 },
-      services: DEFAULT_SERVICES.map((s) => ({ ...s, isActive: true })),
-    };
-    const someInactive: DashboardState = {
-      globalConfig: { fteCount: 10, weeklyHours: 40, annualSalary: 150000 },
-      services: DEFAULT_SERVICES.map((s) =>
+    const allActive = makeState({ fteCount: 10 }, DEFAULT_SERVICES.map((s) => ({ ...s, isActive: true })));
+    const someInactive = makeState({ fteCount: 10 }, DEFAULT_SERVICES.map((s) =>
         s.id === "databases" || s.id === "internal_networking" ? { ...s, isActive: false } : { ...s, isActive: true },
-      ),
-    };
+      ));
 
     const baseline = computeCapacityReport(allActive);
     const withDeactivated = computeCapacityReport(someInactive);
@@ -424,16 +433,10 @@ describe("computeCapacityReport - SRE scenario validation", () => {
   });
 
   it("Scenario 4: The Expertise Gap increases service workload without changing capacity", () => {
-    const withExpertise: DashboardState = {
-      globalConfig: { fteCount: 10, weeklyHours: 40, annualSalary: 150000 },
-      services: DEFAULT_SERVICES.map((s) => ({ ...s, hasExpertise: true })),
-    };
-    const withoutExpertiseForCriticalServices: DashboardState = {
-      globalConfig: { fteCount: 10, weeklyHours: 40, annualSalary: 150000 },
-      services: DEFAULT_SERVICES.map((s) =>
+    const withExpertise = makeState({ fteCount: 10 }, DEFAULT_SERVICES.map((s) => ({ ...s, hasExpertise: true })));
+    const withoutExpertiseForCriticalServices = makeState({ fteCount: 10 }, DEFAULT_SERVICES.map((s) =>
         s.id === "databases" || s.id === "internal_networking" ? { ...s, hasExpertise: false } : { ...s, hasExpertise: true },
-      ),
-    };
+      ));
 
     const baseline = computeCapacityReport(withExpertise);
     const withGap = computeCapacityReport(withoutExpertiseForCriticalServices);
@@ -464,10 +467,7 @@ describe("Pareto toil ranking & stabilization sprint", () => {
     makeService({ id: "d", deployHours: 0, maintenanceHours: 1 }),
     makeService({ id: "off", deployHours: 0, maintenanceHours: 50, isActive: false }),
   ];
-  const state: DashboardState = {
-    globalConfig: { fteCount: 4, weeklyHours: 40, annualSalary: 150_000 },
-    services,
-  };
+  const state = makeState({ fteCount: 4 }, services);
 
   it("ranks active services and flags the top 3", () => {
     const p = getParetoToilRanking(services);
@@ -493,7 +493,7 @@ describe("Pareto toil ranking & stabilization sprint", () => {
 });
 
 describe("ownership model & handback", () => {
-  const base = { id: "x", name: "X", deployHours: 10, maintenanceHours: 10, isActive: true, hasExpertise: true, isAutomated: false, prrApproved: true, sloStatus: "healthy" as const };
+  const base = { id: "x", name: "X", teamId: "default-team", deployHours: 10, maintenanceHours: 10, isActive: true, hasExpertise: true, isAutomated: false, prrApproved: true, sloStatus: "healthy" as const };
 
   it("scales required hours by ownership multiplier", () => {
     expect(getRequiredHours(base)).toBe(20);
@@ -511,10 +511,8 @@ describe("ownership model & handback", () => {
 });
 
 describe("interrupt shield", () => {
-  const base = (hasInterruptShield: boolean): DashboardState => ({
-    globalConfig: { fteCount: 5, weeklyHours: 40, annualSalary: 150_000, hasInterruptShield },
-    services: [],
-  });
+  const base = (hasInterruptShield: boolean): DashboardState =>
+    makeState({ hasInterruptShield });
 
   it("applies a 20% context-switching drag when disabled", () => {
     const raw = computeCapacityReport(base(true)).buckets.innovation;

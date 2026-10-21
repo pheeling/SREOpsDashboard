@@ -1,8 +1,10 @@
 import type { OwnershipModel, Service, SloStatus } from "../engine/types";
+import type { TeamConfig } from "../engine/types";
 import { OWNERSHIP_LABELS, getBaseHours, getOwnershipModel, getRequiredHours } from "../engine/calculations";
 
 interface ServiceCardProps {
   service: Service;
+  teams: TeamConfig[];
   isExpanded: boolean;
   isTopToilContributor?: boolean;
   onToggleExpanded: (id: string) => void;
@@ -13,11 +15,13 @@ interface ServiceCardProps {
   onChangeSloStatus: (id: string, sloStatus: SloStatus) => void;
   onChangeWeight: (id: string, weight: number) => void;
   onChangeOwnership: (id: string, ownershipModel: OwnershipModel) => void;
+  onChangeTeam: (id: string, teamId: string) => void;
   onDelete: (id: string) => void;
 }
 
 export function ServiceCard({
   service,
+  teams,
   isExpanded,
   isTopToilContributor = false,
   onToggleExpanded,
@@ -28,6 +32,7 @@ export function ServiceCard({
   onChangeSloStatus,
   onChangeWeight,
   onChangeOwnership,
+  onChangeTeam,
   onDelete,
 }: ServiceCardProps) {
   const requiredHours = getRequiredHours(service);
@@ -173,6 +178,17 @@ export function ServiceCard({
                   {OWNERSHIP_LABELS[model]}
                 </option>
               ))}
+            </select>
+          </label>
+
+          <label className="service-card__weight">
+            Team
+            <select
+              value={service.teamId}
+              onChange={(e) => onChangeTeam(service.id, e.target.value)}
+              aria-label={`${service.name} Team`}
+            >
+              {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>
           </label>
 

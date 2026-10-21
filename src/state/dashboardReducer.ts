@@ -1,4 +1,4 @@
-import type { DashboardState, GlobalConfig, OwnershipModel, Service, SloStatus } from "../engine/types";
+import type { DashboardState, TeamConfig, OwnershipModel, Service, SloStatus } from "../engine/types";
 import { cloneDefaultServices } from "../engine/seedServices";
 import { applyStabilizationSprint } from "../engine/calculations";
 
@@ -17,11 +17,14 @@ export type DashboardAction =
   | { type: "UPDATE_SERVICE_WEIGHT"; serviceId: string; weight: number }
   | { type: "APPLY_STABILIZATION_SPRINT"; serviceId: string }
   | { type: "SET_OWNERSHIP"; serviceId: string; ownershipModel: OwnershipModel }
+  | { type: "ASSIGN_SERVICE_TEAM"; serviceId: string; teamId: string }
+  | { type: "SET_SELECTED_TEAM"; teamId: DashboardState["selectedTeamId"] }
+  | { type: "ADD_TEAM"; payload: TeamConfig }
   | { type: "ADD_CUSTOM_SERVICE"; payload: NewCustomService }
   | { type: "DELETE_SERVICE"; serviceId: string }
   | { type: "DELETE_ALL_SERVICES" }
   | { type: "RESTORE_DEFAULT_SERVICES" }
-  | { type: "UPDATE_GLOBAL_CONFIG"; payload: Partial<GlobalConfig> }
+  | { type: "UPDATE_GLOBAL_CONFIG"; payload: Partial<TeamConfig> }
   | { type: "RESET"; payload: DashboardState };
 
 function toggleServiceField<K extends keyof Service>(
@@ -80,6 +83,25 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
           service.id === action.serviceId ? { ...service, ownershipModel: action.ownershipModel } : service,
         ),
       };
+    case "ASSIGN_SERVICE_TEAM":
+      if (!state.teams.some((team) => team.id === action.teamId)) return state;
+      return {
+        ...state,
+        services: state.services.map((service) =>
+          service.id === action.serviceId ? { ...service, teamId: action.teamId } : service,
+        ),
+      };
+    case "SET_SELECTED_TEAM":
+      return {
+        ...state,
+        selectedTeamId:
+          action.teamId === "all" || state.teams.some((team) => team.id === action.teamId)
+            ? action.teamId
+            : state.selectedTeamId,
+      };
+    case "ADD_TEAM":
+      if (state.teams.some((team) => team.id === action.payload.id)) return state;
+      return { ...state, teams: [...state.teams, action.payload], selectedTeamId: action.payload.id };
     case "ADD_CUSTOM_SERVICE": {
       const { name, deployHours, maintenanceHours } = action.payload;
       const baseSlug = slugify(name) || "custom_service";
@@ -99,6 +121,7 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
         isAutomated: false,
         prrApproved: true,
         sloStatus: "healthy",
+        teamId: state.selectedTeamId === "all" ? state.teams[0]?.id ?? "default-team" : state.selectedTeamId,
         isCustom: true,
       };
       return { ...state, services: [...state.services, newService] };
@@ -106,13 +129,37 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
     case "DELETE_SERVICE":
       return { ...state, services: state.services.filter((service) => service.id !== action.serviceId) };
     case "DELETE_ALL_SERVICES":
-      return { ...state, services: [] };
-    case "RESTORE_DEFAULT_SERVICES":
-      return { ...state, services: cloneDefaultServices() };
+      return {
+        ...state,
+        services:
+          state.selectedTeamId === "all"
+            ? []
+            : state.services.filter((service) => service.teamId !== state.selectedTeamId),
+      };
+    case "RESTORE_DEFAULT_SERVICES": {
+      const restoredServices = cloneDefaultServices().map((service) => ({
+        ...service,
+        teamId: state.selectedTeamId === "all" ? service.teamId : state.selectedTeamId,
+      }));
+      return {
+        ...state,
+        services:
+          state.selectedTeamId === "all"
+            ? restoredServices
+            : [
+                ...state.services.filter((service) => service.teamId !== state.selectedTeamId),
+                ...restoredServices,
+              ],
+      };
+    }
     case "UPDATE_GLOBAL_CONFIG":
       return {
         ...state,
-        globalConfig: { ...state.globalConfig, ...action.payload },
+        teams: state.teams.map((team) =>
+          team.id === (state.selectedTeamId === "all" ? state.teams[0]?.id : state.selectedTeamId)
+            ? { ...team, ...action.payload }
+            : team,
+        ),
       };
     case "RESET":
       return action.payload;

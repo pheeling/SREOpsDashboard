@@ -7,26 +7,31 @@
  * LocalStorage.
  */
 
-export interface GlobalConfig {
+export interface TeamConfig {
+  id: string;
+  name: string;
   /** Total number of Full-Time Employees available to operate the estate. */
   fteCount: number;
   /** Average weekly hours worked per FTE. */
   weeklyHours: number;
   /** Share of contracted hours available for technical work (defaults to 0.8). */
-  capacityEfficiencyFactor?: number;
+  effectiveCapacityPercentage: number;
   /** Market rate baseline used for hiring-cost projections ($/year/FTE). */
-  annualSalary: number;
+  annualSalaryBaseline: number;
   /** Dedicate 1 FTE to interrupts so the other N-1 engineers are shielded (defaults to false). */
   hasInterruptShield?: boolean;
 }
+
+export type DashboardScope = "all" | string;
 
 export type OwnershipModel = "sre_full" | "shared" | "dev_owned";
 
 export type SloStatus = "healthy" | "warning" | "exhausted";
 
-export interface Service {
+export interface ServiceItem {
   id: string;
   name: string;
+  teamId: string;
   /** Weekly hours required to initially deploy/roll out the service. */
   deployHours: number;
   /** Weekly hours required for steady-state maintenance of the service. */
@@ -55,9 +60,12 @@ export interface Service {
   ownershipModel?: OwnershipModel;
 }
 
+export type Service = ServiceItem;
+
 export interface DashboardState {
-  globalConfig: GlobalConfig;
-  services: Service[];
+  teams: TeamConfig[];
+  services: ServiceItem[];
+  selectedTeamId: DashboardScope;
 }
 
 /** The six Capacity Budget buckets. */

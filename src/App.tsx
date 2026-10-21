@@ -118,9 +118,30 @@ function AuditLog({
 function ExecutiveKpis({ onViewRoiReport }: { onViewRoiReport: () => void }) {
   const { state } = useDashboard();
   const report = computeCapacityReport(state);
-  const dividend = calculateUpskillingDividend(state.services, state.globalConfig);
+  const scopedServices =
+    state.selectedTeamId === "all"
+      ? state.services
+      : state.services.filter((service) => service.teamId === state.selectedTeamId);
+  const scopedTeams =
+    state.selectedTeamId === "all"
+      ? state.teams
+      : state.teams.filter((team) => team.id === state.selectedTeamId);
+  const dividend = scopedTeams.reduce(
+    (total, team) => {
+      const teamDividend = calculateUpskillingDividend(
+        scopedServices.filter((service) => service.teamId === team.id),
+        team,
+      );
+      return {
+        hoursRecoveredPerWeek: total.hoursRecoveredPerWeek + teamDividend.hoursRecoveredPerWeek,
+        annualizedValue: total.annualizedValue + teamDividend.annualizedValue,
+        affectedServices: [...total.affectedServices, ...teamDividend.affectedServices],
+      };
+    },
+    { hoursRecoveredPerWeek: 0, annualizedValue: 0, affectedServices: [] as string[] },
+  );
   const operationalLoad = report.operationalLoadRatio * 100;
-  const activeServices = state.services.filter((service) => service.isActive);
+  const activeServices = scopedServices.filter((service) => service.isActive);
   const approvedServices = activeServices.filter((service) => service.prrApproved);
   const healthyServices = activeServices.filter((service) => service.sloStatus === "healthy");
   const warningServices = activeServices.filter((service) => service.sloStatus === "warning");
@@ -198,7 +219,7 @@ function ExecutiveKpis({ onViewRoiReport }: { onViewRoiReport: () => void }) {
       <article className="dashboard-card executive-kpi" id="search-target-kpi-prr-governance">
         <h2>PRR &amp; Service Readiness</h2>
         <p className="executive-kpi__metric" data-testid="kpi-active-services">
-          {activeServices.length}/{state.services.length} Active
+          {activeServices.length}/{scopedServices.length} Active
         </p>
         <span className={`executive-kpi__status executive-kpi__status--${prrStatus.tone}`} data-testid="kpi-prr-status">
           {prrStatus.label}

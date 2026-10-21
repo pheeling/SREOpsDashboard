@@ -10,17 +10,17 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
 
 export function GlobalConfigPanel() {
   const { state, dispatch } = useDashboard();
-  const { globalConfig } = state;
+  const globalConfig = state.teams.find((team) => team.id === state.selectedTeamId) ?? state.teams[0]!;
   const [fteInput, setFteInput] = useState(String(globalConfig.fteCount));
-  const [salaryInput, setSalaryInput] = useState(currencyFormatter.format(globalConfig.annualSalary));
+  const [salaryInput, setSalaryInput] = useState(currencyFormatter.format(globalConfig.annualSalaryBaseline));
 
   const capacityPercent =
-    (globalConfig.capacityEfficiencyFactor ?? DEFAULT_CAPACITY_EFFICIENCY_FACTOR) * 100;
+    (globalConfig.effectiveCapacityPercentage ?? DEFAULT_CAPACITY_EFFICIENCY_FACTOR) * 100;
   const updateSalary = (value: string) => {
     setSalaryInput(value);
     const digits = value.replace(/\D/g, "");
     if (digits) {
-      dispatch({ type: "UPDATE_GLOBAL_CONFIG", payload: { annualSalary: Number(digits) } });
+      dispatch({ type: "UPDATE_GLOBAL_CONFIG", payload: { annualSalaryBaseline: Number(digits) } });
     }
   };
   const updateFte = (value: string) => {
@@ -35,6 +35,52 @@ export function GlobalConfigPanel() {
   return (
     <section className="dashboard-card global-config-panel" aria-label="Team Configuration">
       <h2>Team Configuration</h2>
+      <label className="config-control">
+        Dashboard Scope
+        <select
+          aria-label="Dashboard Scope"
+          value={state.selectedTeamId}
+          onChange={(event) => {
+            const teamId = event.target.value;
+            const team = state.teams.find((item) => item.id === teamId) ?? state.teams[0];
+            if (team) {
+              setFteInput(String(team.fteCount));
+              setSalaryInput(currencyFormatter.format(team.annualSalaryBaseline));
+            }
+            dispatch({ type: "SET_SELECTED_TEAM", teamId });
+          }}
+        >
+          <option value="all">All Teams</option>
+          {state.teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+        </select>
+      </label>
+      <button
+        type="button"
+        onClick={() => {
+          let number = state.teams.length + 1;
+          let id = `team-${number}`;
+          while (state.teams.some((team) => team.id === id)) {
+            number += 1;
+            id = `team-${number}`;
+          }
+          setFteInput("5");
+          setSalaryInput(currencyFormatter.format(150_000));
+          dispatch({
+            type: "ADD_TEAM",
+            payload: {
+              id,
+              name: `Team ${number}`,
+              fteCount: 5,
+              weeklyHours: 40,
+              effectiveCapacityPercentage: DEFAULT_CAPACITY_EFFICIENCY_FACTOR,
+              annualSalaryBaseline: 150_000,
+            },
+          });
+        }}
+      >
+        + Add Team
+      </button>
+      <p>Editing: {globalConfig.name}</p>
       <div className="config-control" id="search-target-fte-count">
         <label htmlFor="fte-count">FTE Count</label>
         <div className="config-control__range-row">
@@ -95,7 +141,7 @@ export function GlobalConfigPanel() {
           onChange={(e) =>
             dispatch({
               type: "UPDATE_GLOBAL_CONFIG",
-              payload: { capacityEfficiencyFactor: Number(e.target.value) / 100 },
+              payload: { effectiveCapacityPercentage: Number(e.target.value) / 100 },
             })
           }
         />
@@ -110,7 +156,7 @@ export function GlobalConfigPanel() {
           inputMode="numeric"
           value={salaryInput}
           onChange={(e) => updateSalary(e.target.value)}
-          onBlur={() => setSalaryInput(currencyFormatter.format(globalConfig.annualSalary))}
+          onBlur={() => setSalaryInput(currencyFormatter.format(globalConfig.annualSalaryBaseline))}
         />
       </div>
 
