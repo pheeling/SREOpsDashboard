@@ -1,8 +1,9 @@
-import type { OwnershipModel, Service, SloStatus, Team } from "../engine/types";
+import type { OwnershipModel, Service, SloStatus, TeamConfig } from "../engine/types";
 import { OWNERSHIP_LABELS, getBaseHours, getOwnershipModel, getRequiredHours } from "../engine/calculations";
 
 interface ServiceCardProps {
   service: Service;
+  teams: TeamConfig[];
   isExpanded: boolean;
   isTopToilContributor?: boolean;
   onToggleExpanded: (id: string) => void;
@@ -13,14 +14,13 @@ interface ServiceCardProps {
   onChangeSloStatus: (id: string, sloStatus: SloStatus) => void;
   onChangeWeight: (id: string, weight: number) => void;
   onChangeOwnership: (id: string, ownershipModel: OwnershipModel) => void;
+  onChangeTeam: (id: string, teamId: string) => void;
   onDelete: (id: string) => void;
-  teams?: Team[];
-  onChangeTeam?: (id: string, teamId: string) => void;
-  showTeam?: boolean;
 }
 
 export function ServiceCard({
   service,
+  teams,
   isExpanded,
   isTopToilContributor = false,
   onToggleExpanded,
@@ -31,15 +31,13 @@ export function ServiceCard({
   onChangeSloStatus,
   onChangeWeight,
   onChangeOwnership,
-  onDelete,
-  teams = [],
   onChangeTeam,
-  showTeam = false,
+  onDelete,
 }: ServiceCardProps) {
-  const teamName = showTeam ? teams.find((team) => team.id === service.teamId)?.name : undefined;
   const requiredHours = getRequiredHours(service);
   const baseHours = getBaseHours(service);
   const weight = service.weight ?? 1;
+  const team = teams.find((item) => item.id === service.teamId);
   const detailsId = `service-details-${service.id}`;
   const ownershipModel = getOwnershipModel(service);
   const ownershipLabel = ownershipModel === "sre_full" ? "SRE Owned" : OWNERSHIP_LABELS[ownershipModel];
@@ -67,7 +65,7 @@ export function ServiceCard({
           <span className="service-card__summary-main">
             <span className="service-card__name">{service.name}</span>
             <span className="service-card__ownership">{ownershipLabel}</span>
-            {teamName && <span className="service-card__team">{teamName}</span>}
+            {team && <span className="service-card__team-badge" data-testid={`team-badge-${service.id}`}>{team.name}</span>}
             <span className="service-card__expand-indicator" aria-hidden="true">{isExpanded ? "−" : "+"}</span>
           </span>
           <span className="service-card__hours">
@@ -169,6 +167,21 @@ export function ServiceCard({
           </div>
 
           <label className="service-card__weight">
+            Team
+            <select
+              value={service.teamId ?? ""}
+              onChange={(e) => onChangeTeam(service.id, e.target.value)}
+              aria-label={`${service.name} Team`}
+            >
+              {teams.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="service-card__weight">
             Ownership
             <select
               value={getOwnershipModel(service)}
@@ -183,23 +196,6 @@ export function ServiceCard({
               ))}
             </select>
           </label>
-
-          {teams.length > 1 && onChangeTeam && (
-            <label className="service-card__weight">
-              Team
-              <select
-                value={service.teamId}
-                onChange={(e) => onChangeTeam(service.id, e.target.value)}
-                aria-label={`${service.name} Team`}
-              >
-                {teams.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
 
           <label className="service-card__weight">
             Criticality Weight

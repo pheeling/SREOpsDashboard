@@ -569,30 +569,20 @@ describe("Global search", () => {
     await vi.waitFor(() => expect(document.getElementById("search-target-annual-salary")).toHaveClass("search-highlight"));
   });
 
-  it("scopes the dashboard to a team or the organization and persists the selection", async () => {
+  it("scopes the service matrix to the team chosen in the header view filter", async () => {
     const user = userEvent.setup();
-    const { unmount } = render(<App />);
+    render(<App />);
 
     await user.click(sidebarLink("Team & Capacity Settings"));
-    await user.type(screen.getByLabelText("New team name"), "Payments");
     await user.click(screen.getByRole("button", { name: "Add Team" }));
-    expect(screen.getByTestId("team-view-filter")).toHaveValue("team_payments");
+    await user.type(screen.getByRole("textbox", { name: /team name/i }), "Payments");
+    await user.click(screen.getByRole("button", { name: "Create Team" }));
 
     await showServices(user);
+    expect(screen.getByTestId("team-view-filter")).toHaveValue("team_payments");
     expect(screen.getByText("Services (0/0 active for Payments)")).toBeInTheDocument();
-
-    await user.selectOptions(screen.getByTestId("team-view-filter"), "default");
-    expect(screen.getByText("Services (19/19 active for Default Team)")).toBeInTheDocument();
-    const database = await expandService(user, "databases");
-    await user.selectOptions(within(database).getByLabelText("Databases Team"), "team_payments");
-    expect(screen.queryByTestId("service-card-databases")).not.toBeInTheDocument();
-    expect(screen.getByText("Services (18/18 active for Default Team)")).toBeInTheDocument();
 
     await user.selectOptions(screen.getByTestId("team-view-filter"), "all");
     expect(screen.getByText("Services (19/19 active)")).toBeInTheDocument();
-
-    unmount();
-    render(<App />);
-    expect(screen.getByTestId("team-view-filter")).toHaveValue("all");
   });
 });

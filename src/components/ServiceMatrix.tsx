@@ -13,12 +13,13 @@ interface ServiceMatrixProps {
 }
 
 export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
-  const { state, dispatch, teams, isOrganizationView, selectedTeamName } = useDashboard();
+  const { state, dispatch, selectedTeamName } = useDashboard();
   const [groupByTeam, setGroupByTeam] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [name, setName] = useState("");
   const [deployHours, setDeployHours] = useState("1");
   const [maintenanceHours, setMaintenanceHours] = useState("1");
+  const [selectedTeamId, setSelectedTeamId] = useState("");
   const [sloFilter, setSloFilter] = useState<"all" | "exhausted" | "at-risk">("all");
   const [selectedQuadrantFilter, setSelectedQuadrantFilter] = useState<QuadrantKey | null>(null);
   const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(() => new Set());
@@ -81,6 +82,8 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
       : service.sloStatus === "warning" || service.sloStatus === "exhausted";
   });
 
+  const teams = state.teams ?? [];
+  const isOrganizationView = !selectedTeamName;
   const teamOrder = new Map(teams.map((team, index) => [team.id, index]));
   const visibleServices =
     isOrganizationView && groupByTeam
@@ -88,16 +91,19 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
           (a, b) => (teamOrder.get(a.teamId ?? "") ?? 0) - (teamOrder.get(b.teamId ?? "") ?? 0),
         )
       : filteredServices;
+  const defaultTeamId = teams.some((team) => team.id === state.selectedTeamId) ? state.selectedTeamId! : (teams[0]?.id ?? "");
+  const newTeamId = teams.some((team) => team.id === selectedTeamId) ? selectedTeamId : defaultTeamId;
 
   const handleAddCustomService = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || !newTeamId) return;
     dispatch({
       type: "ADD_CUSTOM_SERVICE",
       payload: {
         name: name.trim(),
         deployHours: Number(deployHours) || 0,
         maintenanceHours: Number(maintenanceHours) || 0,
+        teamId: newTeamId,
       },
     });
     setName("");
@@ -110,7 +116,7 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
     <section className="dashboard-card service-matrix" aria-label="Service Matrix">
       <div className="service-matrix__toolbar">
         <h2>
-          Services ({activeCount}/{state.services.length} active{selectedTeamName && teams.length > 1 ? ` for ${selectedTeamName}` : ""})
+          Services ({activeCount}/{state.services.length} active{selectedTeamName && (state.teams?.length ?? 0) > 1 ? ` for ${selectedTeamName}` : ""})
         </h2>
         <p className="service-matrix__scaling-note" data-testid="service-scaling-note">
           {totalRequiredHours.toFixed(1)} required hrs/wk across {activeCount} active service
@@ -169,6 +175,21 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
               onChange={(e) => setMaintenanceHours(e.target.value)}
               aria-label="Custom Service Maintenance Hours"
             />
+          </label>
+          <label>
+            Assigned Team
+            <select
+              value={newTeamId}
+              onChange={(e) => setSelectedTeamId(e.target.value)}
+              required
+              aria-label="Custom Service Assigned Team"
+            >
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
           </label>
           <button type="submit" data-testid="add-custom-service-submit">
             Add Service
@@ -259,8 +280,6 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
                 <ServiceCard
                   service={service}
                   teams={teams}
-                  showTeam={isOrganizationView}
-                  onChangeTeam={handleChangeTeam}
                   isExpanded={expandedCardIds.has(service.id)}
                   onToggleExpanded={toggleExpandedCard}
                   isTopToilContributor={topToilIds.has(service.id)}
@@ -271,6 +290,7 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
                   onChangeSloStatus={handleChangeSloStatus}
                   onChangeWeight={handleChangeWeight}
                   onChangeOwnership={handleChangeOwnership}
+                  onChangeTeam={handleChangeTeam}
                   onDelete={handleDelete}
                 />
                 </Fragment>

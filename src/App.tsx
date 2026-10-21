@@ -237,7 +237,7 @@ function ExecutiveKpis({ onViewRoiReport }: { onViewRoiReport: () => void }) {
 }
 
 function DashboardContent() {
-  const { auditLogs, clearAuditLogs, selectedTeamId } = useDashboard();
+  const { auditLogs, clearAuditLogs } = useDashboard();
   const [activeTab, setActiveTab] = useState<DashboardTab>("summary");
   const [showSummaryReport, setShowSummaryReport] = useState(false);
   const [jump, setJump] = useState<{ targetId: string; serviceId?: string; nonce: number } | null>(null);
@@ -330,7 +330,7 @@ function DashboardContent() {
 
       {activeTab === "team" && (
         <section className="dashboard-view" aria-label="Team and Capacity Settings">
-          <GlobalConfigPanel key={selectedTeamId} />
+          <GlobalConfigPanel />
         </section>
       )}
 

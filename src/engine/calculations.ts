@@ -10,12 +10,13 @@ import type {
   CapacityReport,
   DashboardState,
   GlobalConfig,
+  DashboardScope,
   OwnershipModel,
+  ScopedCapacityReport,
   Service,
   ServiceBreakdown,
-  Team,
+  TeamConfig,
 } from "./types";
-import { ALL_TEAMS_ID } from "./types";
 
 /** Divisor applied to a service's hours once it has been automated ("1/3 Automation Rule"). */
 export const AUTOMATION_REDUCTION_FACTOR = 3;
@@ -427,67 +428,70 @@ export function simulateStabilizationSprint(state: DashboardState): Stabilizatio
   };
 }
 
-export const DEFAULT_TEAM_ID = "default";
+export const DEFAULT_TEAM_ID = "default-team";
+export const DEFAULT_TEAM_NAME = "Core SRE";
 
-/** Returns the stored teams, or a single default team built from the legacy `globalConfig`. */
-export function getTeams(state: DashboardState): Team[] {
-  return state.teams?.length
-    ? state.teams
-    : [{ id: DEFAULT_TEAM_ID, name: "Default Team", config: state.globalConfig }];
-}
-
-export function isOrganizationView(state: DashboardState): boolean {
-  return state.selectedTeamId === ALL_TEAMS_ID;
-}
-
-/** Service ownership with unassigned services falling back to the first team. */
-export function getServiceTeamId(service: Service, teams: Team[]): string {
-  return service.teamId && teams.some((team) => team.id === service.teamId) ? service.teamId : teams[0].id;
-}
-
-/** Aggregates team configs: summed FTEs, FTE-weighted averages for hours, capacity and salary. */
-export function aggregateTeamConfigs(teams: Team[]): GlobalConfig {
-  if (teams.length === 1) return teams[0].config;
-  const fte = teams.reduce((sum, team) => sum + finiteNumber(team.config.fteCount), 0);
-  const hours = teams.reduce((sum, team) => sum + getTotalAvailableHours(team.config), 0);
-  const effective = teams.reduce((sum, team) => sum + getEffectiveCapacityHours(team.config), 0);
-  const salaryTotal = teams.reduce(
-    (sum, team) => sum + finiteNumber(team.config.fteCount) * finiteNumber(team.config.annualSalary),
-    0,
-  );
+/** Converts a legacy GlobalConfig into the default team entry. */
+export function globalConfigToTeam(globalConfig: GlobalConfig): TeamConfig {
   return {
-    fteCount: fte,
-    weeklyHours: fte > 0 ? hours / fte : 0,
-    capacityEfficiencyFactor: hours > 0 ? effective / hours : DEFAULT_CAPACITY_EFFICIENCY_FACTOR,
-    annualSalary: fte > 0 ? salaryTotal / fte : 0,
-    hasInterruptShield: teams.every((team) => team.config.hasInterruptShield),
+    id: DEFAULT_TEAM_ID,
+    name: DEFAULT_TEAM_NAME,
+    fteCount: finiteNumber(globalConfig.fteCount),
+    weeklyHours: finiteNumber(globalConfig.weeklyHours),
+    effectiveCapacityPercentage: finiteNumber(
+      globalConfig.capacityEfficiencyFactor,
+      DEFAULT_CAPACITY_EFFICIENCY_FACTOR,
+    ),
+    annualSalaryBaseline: finiteNumber(globalConfig.annualSalary),
   };
 }
 
-/** Config for the selected scope: one team's config, or the aggregate for the Organization View. */
-export function getScopedConfig(teams: Team[], selectedTeamId: string): GlobalConfig {
-  return teams.find((team) => team.id === selectedTeamId)?.config ?? aggregateTeamConfigs(teams);
+/** Builds the staffing parameters the single-team engine expects from a team. */
+export function teamToGlobalConfig(team: TeamConfig, base?: Pick<GlobalConfig, "hasInterruptShield">): GlobalConfig {
+  return {
+    fteCount: team.fteCount,
+    weeklyHours: team.weeklyHours,
+    capacityEfficiencyFactor: team.effectiveCapacityPercentage,
+    annualSalary: team.annualSalaryBaseline,
+    hasInterruptShield: base?.hasInterruptShield,
+  };
 }
 
-/** Services visible in the selected scope. */
-export function getScopedServices(services: Service[], teams: Team[], selectedTeamId: string): Service[] {
-  return selectedTeamId === ALL_TEAMS_ID
-    ? services
-    : services.filter((service) => getServiceTeamId(service, teams) === selectedTeamId);
+/** Services assigned to a team; services lacking a teamId belong to the default team. */
+export function getTeamServices(services: Service[], teamId: string): Service[] {
+  return services.filter((service) => (service.teamId ?? DEFAULT_TEAM_ID) === teamId);
 }
 
-/** Hiring exposure for the selected scope; the Organization View sums each team's own shortfall. */
-export function getScopedHiringCost(state: DashboardState): number {
-  const teams = getTeams(state);
-  const selected = state.selectedTeamId ?? teams[0].id;
-  const scopedTeams = selected === ALL_TEAMS_ID ? teams : teams.filter((team) => team.id === selected);
-  return scopedTeams.reduce(
-    (sum, team) =>
-      sum +
-      computeCapacityReport({
-        globalConfig: team.config,
-        services: state.services.filter((service) => getServiceTeamId(service, teams) === team.id),
-      }).hiringCost,
-    0,
-  );
+/**
+ * Computes metrics for a dashboard scope: a single team's isolated metrics
+ * when given a teamId, or organization-wide aggregates when given 'all'.
+ */
+export function computeScopedReport(state: DashboardState, scope: DashboardScope = "all"): ScopedCapacityReport {
+  const teams = state.teams ?? [globalConfigToTeam(state.globalConfig)];
+  const scopedTeams = scope === "all" ? teams : teams.filter((team) => team.id === scope);
+
+  const teamReports = scopedTeams.map((team) => ({
+    team,
+    report: computeCapacityReport({
+      globalConfig: teamToGlobalConfig(team, state.globalConfig),
+      services: getTeamServices(state.services, team.id),
+    }),
+  }));
+
+  const totalRoutineOperations =
+    scope === "all"
+      ? getTotalRequiredHours(state.services)
+      : teamReports.reduce((sum, { report }) => sum + report.totalRequiredHours, 0);
+
+  return {
+    scope,
+    totalContractedHours: teamReports.reduce((sum, { team }) => sum + team.fteCount * team.weeklyHours, 0),
+    totalEffectiveCapacity: teamReports.reduce(
+      (sum, { team }) => sum + team.fteCount * team.weeklyHours * team.effectiveCapacityPercentage,
+      0,
+    ),
+    totalRoutineOperations,
+    hiringShortfall: teamReports.reduce((sum, { report }) => sum + report.hiringCost, 0),
+    teamReports,
+  };
 }

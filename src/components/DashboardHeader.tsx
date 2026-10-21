@@ -1,8 +1,9 @@
-import { ALL_TEAMS_ID } from "../engine/types";
 import { useDashboard } from "../state/DashboardContext";
+import { ORGANIZATION_VIEW } from "../engine/teams";
 
 export function DashboardHeader() {
-  const { teams, selectedTeamId, dispatch } = useDashboard();
+  const { state, dispatch } = useDashboard();
+  const teams = state.teams ?? [];
 
   return (
     <header className="dashboard__header">
@@ -11,12 +12,12 @@ export function DashboardHeader() {
       <label className="dashboard__view-filter">
         View
         <select
-          value={selectedTeamId}
-          onChange={(e) => dispatch({ type: "SET_SELECTED_TEAM", teamId: e.target.value })}
+          value={state.selectedTeamId ?? ORGANIZATION_VIEW}
+          onChange={(e) => dispatch({ type: "SELECT_TEAM", teamId: e.target.value })}
           aria-label="Dashboard view"
           data-testid="team-view-filter"
         >
-          <option value={ALL_TEAMS_ID}>All Teams (Organization View)</option>
+          <option value={ORGANIZATION_VIEW}>All Teams (Organization View)</option>
           {teams.map((team) => (
             <option key={team.id} value={team.id}>
               {team.name}
