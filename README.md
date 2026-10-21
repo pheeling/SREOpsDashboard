@@ -147,3 +147,13 @@ npm run build  # type-check and build for production
 - `src/components/` contains the dashboard panels and service controls.
 - `src/engine/` contains the capacity calculations, seeded service catalog, types, and calculation tests.
 - `src/state/` contains dashboard state management and local-storage persistence.
+
+## Server persistence (SQLite)
+
+`node server/index.js` (`npm start`) serves the built app and a SQLite-backed API at `$DB_DIR/sreops.db` (default `/app/data` in Docker; mount it as a persistent volume in Coolify).
+
+- `GET/PUT /api/state` – latest live state (`teams`, `services`, `globalConfig`).
+- `POST /api/snapshots` – record a snapshot (`triggerType`, `label`, `metrics`, `teams`, `services`, all pre-calculated by the client).
+- `GET /api/snapshots?range=30d|90d|180d|1y&teamId=...` – trend points (load %, toil hours, error-budget compliance).
+
+Snapshots older than 365 days are pruned daily; a weekly scheduled snapshot reuses the last submitted payload.
