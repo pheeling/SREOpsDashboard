@@ -1,4 +1,4 @@
-import type { DashboardState, Service } from "../engine/types";
+import { DEFAULT_TEAMS, type DashboardState, type Service, type Team } from "../engine/types";
 
 export const STORAGE_KEY = "sre-ops-dashboard:state";
 
@@ -10,10 +10,16 @@ export function loadState(): DashboardState | null {
     if (!parsed || !parsed.globalConfig || !Array.isArray(parsed.services)) {
       return null;
     }
+    const teams: Team[] =
+      Array.isArray(parsed.teams) && parsed.teams.length > 0
+        ? parsed.teams
+        : DEFAULT_TEAMS.map((team) => ({ ...team }));
     return {
       ...parsed,
+      teams,
       services: parsed.services.map((service: Service) => ({
         ...service,
+        teamId: teams.some((team) => team.id === service.teamId) ? service.teamId : teams[0].id,
         prrApproved: service.prrApproved !== false,
         sloStatus: service.sloStatus ?? "healthy",
       })),

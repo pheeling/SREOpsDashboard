@@ -1,8 +1,9 @@
-import type { OwnershipModel, Service, SloStatus } from "../engine/types";
+import type { OwnershipModel, Service, SloStatus, Team } from "../engine/types";
 import { OWNERSHIP_LABELS, getBaseHours, getOwnershipModel, getRequiredHours } from "../engine/calculations";
 
 interface ServiceCardProps {
   service: Service;
+  teams: Team[];
   isExpanded: boolean;
   isTopToilContributor?: boolean;
   onToggleExpanded: (id: string) => void;
@@ -13,11 +14,13 @@ interface ServiceCardProps {
   onChangeSloStatus: (id: string, sloStatus: SloStatus) => void;
   onChangeWeight: (id: string, weight: number) => void;
   onChangeOwnership: (id: string, ownershipModel: OwnershipModel) => void;
+  onChangeTeam: (id: string, teamId: string) => void;
   onDelete: (id: string) => void;
 }
 
 export function ServiceCard({
   service,
+  teams,
   isExpanded,
   isTopToilContributor = false,
   onToggleExpanded,
@@ -28,11 +31,13 @@ export function ServiceCard({
   onChangeSloStatus,
   onChangeWeight,
   onChangeOwnership,
+  onChangeTeam,
   onDelete,
 }: ServiceCardProps) {
   const requiredHours = getRequiredHours(service);
   const baseHours = getBaseHours(service);
   const weight = service.weight ?? 1;
+  const team = teams.find((item) => item.id === service.teamId);
   const detailsId = `service-details-${service.id}`;
   const ownershipModel = getOwnershipModel(service);
   const ownershipLabel = ownershipModel === "sre_full" ? "SRE Owned" : OWNERSHIP_LABELS[ownershipModel];
@@ -60,6 +65,7 @@ export function ServiceCard({
           <span className="service-card__summary-main">
             <span className="service-card__name">{service.name}</span>
             <span className="service-card__ownership">{ownershipLabel}</span>
+            {team && <span className="service-card__team-badge" data-testid={`team-badge-${service.id}`}>{team.name}</span>}
             <span className="service-card__expand-indicator" aria-hidden="true">{isExpanded ? "−" : "+"}</span>
           </span>
           <span className="service-card__hours">
@@ -159,6 +165,21 @@ export function ServiceCard({
               PRR Approved
             </label>
           </div>
+
+          <label className="service-card__weight">
+            Team
+            <select
+              value={service.teamId ?? ""}
+              onChange={(e) => onChangeTeam(service.id, e.target.value)}
+              aria-label={`${service.name} Team`}
+            >
+              {teams.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
 
           <label className="service-card__weight">
             Ownership

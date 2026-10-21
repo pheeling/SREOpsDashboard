@@ -18,6 +18,7 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
   const [name, setName] = useState("");
   const [deployHours, setDeployHours] = useState("1");
   const [maintenanceHours, setMaintenanceHours] = useState("1");
+  const [selectedTeamId, setSelectedTeamId] = useState("");
   const [sloFilter, setSloFilter] = useState<"all" | "exhausted" | "at-risk">("all");
   const [selectedQuadrantFilter, setSelectedQuadrantFilter] = useState<QuadrantKey | null>(null);
   const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(() => new Set());
@@ -51,6 +52,8 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
 
   const handleChangeOwnership = (serviceId: string, ownershipModel: OwnershipModel) =>
     dispatch({ type: "SET_OWNERSHIP", serviceId, ownershipModel });
+  const handleChangeTeam = (serviceId: string, teamId: string) =>
+    dispatch({ type: "SET_SERVICE_TEAM", serviceId, teamId });
   const handleDelete = (serviceId: string) => dispatch({ type: "DELETE_SERVICE", serviceId });
   const handleDeleteAll = () => {
     if (window.confirm("Delete all services from the catalog?")) {
@@ -78,15 +81,18 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
       : service.sloStatus === "warning" || service.sloStatus === "exhausted";
   });
 
+  const newTeamId = state.teams.some((team) => team.id === selectedTeamId) ? selectedTeamId : (state.teams[0]?.id ?? "");
+
   const handleAddCustomService = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || !newTeamId) return;
     dispatch({
       type: "ADD_CUSTOM_SERVICE",
       payload: {
         name: name.trim(),
         deployHours: Number(deployHours) || 0,
         maintenanceHours: Number(maintenanceHours) || 0,
+        teamId: newTeamId,
       },
     });
     setName("");
@@ -159,6 +165,21 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
               aria-label="Custom Service Maintenance Hours"
             />
           </label>
+          <label>
+            Assigned Team
+            <select
+              value={newTeamId}
+              onChange={(e) => setSelectedTeamId(e.target.value)}
+              required
+              aria-label="Custom Service Assigned Team"
+            >
+              {state.teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <button type="submit" data-testid="add-custom-service-submit">
             Add Service
           </button>
@@ -230,6 +251,7 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
                 <ServiceCard
                   key={service.id}
                   service={service}
+                  teams={state.teams}
                   isExpanded={expandedCardIds.has(service.id)}
                   onToggleExpanded={toggleExpandedCard}
                   isTopToilContributor={topToilIds.has(service.id)}
@@ -240,6 +262,7 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
                   onChangeSloStatus={handleChangeSloStatus}
                   onChangeWeight={handleChangeWeight}
                   onChangeOwnership={handleChangeOwnership}
+                  onChangeTeam={handleChangeTeam}
                   onDelete={handleDelete}
                 />
               ))}

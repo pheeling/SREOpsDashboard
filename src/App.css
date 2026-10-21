@@ -487,6 +487,7 @@
 .capacity-chart__shield,
 .service-card__badge,
 .service-card__ownership,
+.service-card__team-badge,
 .service-card__prr-badge,
 .slo-status-badge {
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -775,7 +776,9 @@
   font-weight: 700;
 }
 
-.service-card__ownership {
+.service-card__ownership,
+.service-card__team-badge,
+.service-card__team-badge {
   display: inline-block;
   padding: 0.1rem 0.4rem;
   border: 1px solid #334155;

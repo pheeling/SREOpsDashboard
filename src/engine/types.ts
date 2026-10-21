@@ -53,10 +53,22 @@ export interface Service {
   weight?: number;
   /** Who carries the pager/toil for this service; defaults to `sre_full`. */
   ownershipModel?: OwnershipModel;
+  /** Id of the team accountable for this service (see `DashboardState.teams`). */
+  teamId?: string;
 }
+
+export interface Team {
+  id: string;
+  name: string;
+}
+
+export const DEFAULT_TEAMS: readonly Readonly<Team>[] = Object.freeze([
+  Object.freeze({ id: "team_primary", name: "Primary Team" }),
+]);
 
 export interface DashboardState {
   globalConfig: GlobalConfig;
+  teams: Team[];
   services: Service[];
 }
 
