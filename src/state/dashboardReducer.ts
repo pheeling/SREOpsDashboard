@@ -1,6 +1,6 @@
-import type { DashboardState, GlobalConfig, OwnershipModel, Service, SloStatus } from "../engine/types";
+import type { DashboardState, GlobalConfig, OwnershipModel, Service, SloStatus, TeamConfig } from "../engine/types";
 import { cloneDefaultServices } from "../engine/seedServices";
-import { ensureTeams, newTeamId, ORGANIZATION_VIEW, syncGlobalConfig, DEFAULT_TEAM_CONFIG } from "../engine/teams";
+import { ensureTeams, newTeamId, ORGANIZATION_VIEW, getEditableTeam, syncGlobalConfig, DEFAULT_NEW_TEAM } from "../engine/teams";
 import { applyStabilizationSprint } from "../engine/calculations";
 
 export interface NewCustomService {
@@ -118,23 +118,37 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
     case "RESTORE_DEFAULT_SERVICES":
       return ensureTeams({ ...state, services: cloneDefaultServices() });
     case "UPDATE_GLOBAL_CONFIG": {
-      const selected = state.teams?.find((team) => team.id === state.selectedTeamId);
-      if (!selected) {
-        return { ...state, globalConfig: { ...state.globalConfig, ...action.payload } };
-      }
-      return syncGlobalConfig({
+      const { hasInterruptShield, ...teamFields } = action.payload;
+      const team = getEditableTeam(state);
+      const withShield = {
         ...state,
-        teams: state.teams!.map((team) =>
-          team.id === selected.id ? { ...team, config: { ...team.config, ...action.payload } } : team,
-        ),
+        globalConfig: {
+          ...state.globalConfig,
+          ...(hasInterruptShield !== undefined ? { hasInterruptShield } : {}),
+        },
+      };
+      if (!team) {
+        return { ...withShield, globalConfig: { ...withShield.globalConfig, ...teamFields } };
+      }
+      const updates: Partial<TeamConfig> = {};
+      if (teamFields.fteCount !== undefined) updates.fteCount = teamFields.fteCount;
+      if (teamFields.weeklyHours !== undefined) updates.weeklyHours = teamFields.weeklyHours;
+      if (teamFields.capacityEfficiencyFactor !== undefined) {
+        updates.effectiveCapacityPercentage = teamFields.capacityEfficiencyFactor;
+      }
+      if (teamFields.annualSalary !== undefined) updates.annualSalaryBaseline = teamFields.annualSalary;
+      return syncGlobalConfig({
+        ...withShield,
+        selectedTeamId: team.id,
+        teams: state.teams!.map((t) => (t.id === team.id ? { ...t, ...updates } : t)),
       });
     }
     case "ADD_TEAM": {
       const base = ensureTeams(state);
-      const team = {
+      const team: TeamConfig = {
         id: newTeamId(action.name, base.teams!),
         name: action.name.trim() || "New Team",
-        config: { ...DEFAULT_TEAM_CONFIG },
+        ...DEFAULT_NEW_TEAM,
       };
       return syncGlobalConfig({ ...base, teams: [...base.teams!, team], selectedTeamId: team.id });
     }

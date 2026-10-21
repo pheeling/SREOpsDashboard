@@ -20,12 +20,6 @@ export interface GlobalConfig {
   hasInterruptShield?: boolean;
 }
 
-export interface Team {
-  id: string;
-  name: string;
-  config: GlobalConfig;
-}
-
 export type OwnershipModel = "sre_full" | "shared" | "dev_owned";
 
 export type SloStatus = "healthy" | "warning" | "exhausted";
@@ -63,16 +57,29 @@ export interface Service {
   teamId?: string;
 }
 
+/** Independently configured team in the multi-team data model. */
+export interface TeamConfig {
+  id: string;
+  name: string;
+  fteCount: number;
+  weeklyHours: number;
+  /** Share (0..1) of contracted hours available for technical work. */
+  effectiveCapacityPercentage: number;
+  annualSalaryBaseline: number;
+}
+
+/** 'all' for the whole organization, or a specific team ID. */
+export type DashboardScope = "all" | string;
+
 export interface DashboardState {
   /**
    * Effective configuration used by the capacity engine: the selected team's
-   * config, or the organization aggregate when no single team is selected.
+   * config, or the organization aggregate when scope is "all".
    */
   globalConfig: GlobalConfig;
-  teams?: Team[];
-  /** Selected team id, or `ORGANIZATION_VIEW` for the aggregate view. */
-  selectedTeamId?: string;
   services: Service[];
+  teams?: TeamConfig[];
+  selectedTeamId?: DashboardScope;
 }
 
 /** The six Capacity Budget buckets. */
@@ -130,4 +137,19 @@ export interface CapacityReport {
   recoveredInnovationHours: number;
   /** Toil hours to shed to reach the 50% threshold (0 when not in the Red Zone). */
   deficitHours: number;
+}
+
+/** Organization-wide (or single-team) aggregate metrics for a dashboard scope. */
+export interface ScopedCapacityReport {
+  scope: DashboardScope;
+  /** Sum of fteCount * weeklyHours across the teams in scope. */
+  totalContractedHours: number;
+  /** Sum of fteCount * weeklyHours * effectiveCapacityPercentage across the teams in scope. */
+  totalEffectiveCapacity: number;
+  /** Required hours of active services in scope. */
+  totalRoutineOperations: number;
+  /** Sum of per-team hiring shortfalls (over-staffed teams never mask deficits). */
+  hiringShortfall: number;
+  /** Per-team reports for the teams in scope. */
+  teamReports: { team: TeamConfig; report: CapacityReport }[];
 }

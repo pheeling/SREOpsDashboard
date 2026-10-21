@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useDashboard } from "../state/DashboardContext";
-import { MIN_ONCALL_FTE, ORGANIZATION_VIEW } from "../engine/teams";
+import { getEditableTeam, MIN_ONCALL_FTE, ORGANIZATION_VIEW } from "../engine/teams";
 import { DEFAULT_CAPACITY_EFFICIENCY_FACTOR } from "../engine/calculations";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
@@ -12,8 +12,8 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
 export function GlobalConfigPanel() {
   const { state, dispatch } = useDashboard();
   const teams = state.teams ?? [];
-  const isOrgView = state.selectedTeamId === ORGANIZATION_VIEW;
-  const selectedTeam = teams.find((team) => team.id === state.selectedTeamId);
+  const selectedTeam = getEditableTeam(state);
+  const isOrgView = !selectedTeam;
   const [newTeamName, setNewTeamName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [renameValue, setRenameValue] = useState<string | null>(null);
@@ -25,7 +25,7 @@ export function GlobalConfigPanel() {
   const ownedServices = selectedTeam
     ? state.services.filter((service) => service.teamId === selectedTeam.id).length
     : 0;
-  const understaffed = teams.filter((team) => team.config.fteCount < MIN_ONCALL_FTE);
+  const understaffed = teams.filter((team) => team.fteCount < MIN_ONCALL_FTE);
 
   const closeEditors = () => {
     setIsAdding(false);
@@ -42,7 +42,7 @@ export function GlobalConfigPanel() {
             <label htmlFor="team-selector">Team</label>
             <select
               id="team-selector"
-              value={state.selectedTeamId}
+              value={selectedTeam?.id ?? ORGANIZATION_VIEW}
               onChange={(e) => {
                 closeEditors();
                 dispatch({ type: "SELECT_TEAM", teamId: e.target.value });
@@ -151,8 +151,8 @@ export function GlobalConfigPanel() {
               <ul>
                 {teams.map((team) => (
                   <li key={team.id}>
-                    {team.name}: {team.config.fteCount} FTE
-                    {team.config.fteCount < MIN_ONCALL_FTE ? " (below on-call minimum)" : ""}
+                    {team.name}: {team.fteCount} FTE
+                    {team.fteCount < MIN_ONCALL_FTE ? " (below on-call minimum)" : ""}
                   </li>
                 ))}
               </ul>
@@ -161,7 +161,7 @@ export function GlobalConfigPanel() {
           )}
         </div>
       )}
-      {!isOrgView && <TeamConfigFields key={state.selectedTeamId} />}
+      {!isOrgView && <TeamConfigFields key={selectedTeam?.id} />}
     </section>
   );
 }

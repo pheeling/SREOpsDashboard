@@ -57,8 +57,8 @@ describe("team management", () => {
     const added = state.teams![1];
     expect(state.selectedTeamId).toBe(added.id);
     state = dashboardReducer(state, { type: "UPDATE_GLOBAL_CONFIG", payload: { fteCount: 3 } });
-    expect(state.teams![1].config.fteCount).toBe(3);
-    expect(state.teams![0].config.fteCount).toBe(1);
+    expect(state.teams![1].fteCount).toBe(3);
+    expect(state.teams![0].fteCount).toBe(1);
     state = dashboardReducer(state, { type: "RENAME_TEAM", teamId: added.id, name: "Data SRE" });
     expect(state.teams![1].name).toBe("Data SRE");
     state = dashboardReducer(state, { type: "SELECT_TEAM", teamId: ORGANIZATION_VIEW });

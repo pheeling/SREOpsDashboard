@@ -1,13 +1,13 @@
 import { useDashboard } from "../state/DashboardContext";
 import { computeCapacityReport } from "../engine/calculations";
-import { MIN_ONCALL_FTE, ORGANIZATION_VIEW } from "../engine/teams";
+import { getEditableTeam, MIN_ONCALL_FTE } from "../engine/teams";
 
 export function WarningBanner() {
   const { state } = useDashboard();
   const report = computeCapacityReport(state);
-  const isOrgView = state.selectedTeamId === ORGANIZATION_VIEW;
+  const isOrgView = !getEditableTeam(state);
   const understaffedTeams = isOrgView
-    ? (state.teams ?? []).filter((team) => team.config.fteCount < MIN_ONCALL_FTE)
+    ? (state.teams ?? []).filter((team) => team.fteCount < MIN_ONCALL_FTE)
     : [];
   const isUnderstaffed = isOrgView && state.teams?.length
     ? understaffedTeams.length > 0
