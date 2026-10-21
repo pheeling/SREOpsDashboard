@@ -8,7 +8,7 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
 });
 
 export function HiringCostWidget() {
-  const { state } = useDashboard();
+  const { state, hiringCost } = useDashboard();
   const report = computeCapacityReport(state);
   const dividend = calculateUpskillingDividend(state.services, state.globalConfig);
 
@@ -19,8 +19,8 @@ export function HiringCostWidget() {
         <div>
           <h3>Option A: External Headcount</h3>
           <p className="hiring-cost-widget__amount" data-testid="hiring-cost-amount">
-            {report.hiringCost > 0
-              ? `${currencyFormatter.format(report.hiringCost)}/yr in external hiring costs to restore a sustainable 50% operational balance.`
+            {hiringCost > 0
+              ? `${currencyFormatter.format(hiringCost)}/yr in external hiring costs to restore a sustainable 50% operational balance.`
               : "No external hiring required — operational load is within the 50% limit."}
           </p>
           <p>

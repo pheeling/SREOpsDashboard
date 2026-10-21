@@ -1885,3 +1885,16 @@
 .team-manager__row input {
   width: auto;
 }
+
+.dashboard__view-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.service-matrix__group-heading {
+  grid-column: 1 / -1;
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+}

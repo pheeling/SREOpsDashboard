@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { DashboardProvider, useDashboard } from "./state/DashboardContext";
 import type { AuditLogEntry } from "./state/DashboardContext";
+import { DashboardHeader } from "./components/DashboardHeader";
 import { GlobalConfigPanel } from "./components/GlobalConfigPanel";
 import { LoadGauge } from "./components/LoadGauge";
 import { HiringCostWidget } from "./components/HiringCostWidget";
@@ -307,10 +308,7 @@ function DashboardContent() {
         </aside>
 
         <main className="dashboard">
-      <header className="dashboard__header">
-        <h1>SRE Infrastructure Complexity &amp; Operational Capacity Calculator</h1>
-        <p>Quantify operational toil and keep it under the 50% SRE capacity threshold.</p>
-      </header>
+      <DashboardHeader />
 
       <WarningBanner />
 

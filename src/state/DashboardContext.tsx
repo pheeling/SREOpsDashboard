@@ -2,7 +2,13 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import type { Dispatch, ReactNode } from "react";
 import type { DashboardState, GlobalConfig } from "../engine/types";
 import { cloneDefaultServices } from "../engine/seedServices";
-import { DEFAULT_ANNUAL_SALARY, getOwnershipModel, OWNERSHIP_LABELS } from "../engine/calculations";
+import {
+  computeScopedReport,
+  DEFAULT_ANNUAL_SALARY,
+  getOwnershipModel,
+  getTeamServices,
+  OWNERSHIP_LABELS,
+} from "../engine/calculations";
 import { dashboardReducer, type DashboardAction } from "./dashboardReducer";
 import { ensureTeams } from "../engine/teams";
 import { loadState, saveState } from "./localStorage";
@@ -25,7 +31,14 @@ export const INITIAL_STATE: DashboardState = ensureTeams({
 });
 
 interface DashboardContextValue {
+  /** State scoped to the selected team (or the whole organization): scoped `services` and synced `globalConfig`. */
   state: DashboardState;
+  /** Unfiltered state across every team. */
+  fullState: DashboardState;
+  /** Hiring exposure for the active scope; the Organization View sums each team's shortfall. */
+  hiringCost: number;
+  /** Name of the selected team, or null in the Organization View. */
+  selectedTeamName: string | null;
   dispatch: Dispatch<DashboardAction>;
   auditLogs: AuditLogEntry[];
   clearAuditLogs: () => void;
@@ -172,7 +185,22 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     saveState(state);
   }, [state]);
 
-  const value = useMemo(() => ({ state, dispatch, auditLogs, clearAuditLogs }), [state, dispatch, auditLogs, clearAuditLogs]);
+  const value = useMemo(() => {
+    const scope = state.selectedTeamId ?? "all";
+    const selectedTeam = state.teams?.find((team) => team.id === scope);
+    return {
+      state: {
+        ...state,
+        services: selectedTeam ? getTeamServices(state.services, selectedTeam.id) : state.services,
+      },
+      fullState: state,
+      hiringCost: computeScopedReport(state, scope).hiringShortfall,
+      selectedTeamName: selectedTeam?.name ?? null,
+      dispatch,
+      auditLogs,
+      clearAuditLogs,
+    };
+  }, [state, dispatch, auditLogs, clearAuditLogs]);
 
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;
 }

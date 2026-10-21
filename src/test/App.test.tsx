@@ -568,4 +568,21 @@ describe("Global search", () => {
     await user.click(screen.getByRole("option", { name: /Annual Salary Baseline/ }));
     await vi.waitFor(() => expect(document.getElementById("search-target-annual-salary")).toHaveClass("search-highlight"));
   });
+
+  it("scopes the service matrix to the team chosen in the header view filter", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(sidebarLink("Team & Capacity Settings"));
+    await user.click(screen.getByRole("button", { name: "Add Team" }));
+    await user.type(screen.getByRole("textbox", { name: /team name/i }), "Payments");
+    await user.click(screen.getByRole("button", { name: "Create Team" }));
+
+    await showServices(user);
+    expect(screen.getByTestId("team-view-filter")).toHaveValue("team_payments");
+    expect(screen.getByText("Services (0/0 active for Payments)")).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByTestId("team-view-filter"), "all");
+    expect(screen.getByText("Services (19/19 active)")).toBeInTheDocument();
+  });
 });
