@@ -1,4 +1,5 @@
 import type { DashboardState, Service, TeamConfig } from "../engine/types";
+import { syncGlobalConfig } from "../engine/teams";
 import { DEFAULT_TEAM_ID, globalConfigToTeam } from "../engine/calculations";
 
 export const STORAGE_KEY = "sre-ops-dashboard:state";
@@ -11,7 +12,8 @@ export function loadState(): DashboardState | null {
     if (!parsed || !parsed.globalConfig || !Array.isArray(parsed.services)) {
       return null;
     }
-    return migrateState(parsed);
+    const migrated = migrateState(parsed);
+    return migrated ? syncGlobalConfig(migrated) : null;
   } catch {
     return null;
   }

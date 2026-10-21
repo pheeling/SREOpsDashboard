@@ -53,7 +53,7 @@ export interface Service {
   weight?: number;
   /** Who carries the pager/toil for this service; defaults to `sre_full`. */
   ownershipModel?: OwnershipModel;
-  /** ID of the team this service is assigned to. */
+  /** Team that owns this service (reassigned when its team is deleted). */
   teamId?: string;
 }
 
@@ -72,6 +72,10 @@ export interface TeamConfig {
 export type DashboardScope = "all" | string;
 
 export interface DashboardState {
+  /**
+   * Effective configuration used by the capacity engine: the selected team's
+   * config, or the organization aggregate when scope is "all".
+   */
   globalConfig: GlobalConfig;
   services: Service[];
   teams?: TeamConfig[];
