@@ -103,6 +103,54 @@ describe("App", () => {
     expect(screen.queryByTestId("staffing-warning")).not.toBeInTheDocument();
   });
 
+  it("warns for a red-zone team in organization view even when pooled load is healthy", () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        globalConfig: { fteCount: 4, weeklyHours: 40, annualSalary: 150000 },
+        teams: [
+          {
+            id: "core",
+            name: "Core SRE",
+            fteCount: 4,
+            weeklyHours: 40,
+            effectiveCapacityPercentage: 0.8,
+            annualSalaryBaseline: 150000,
+          },
+          {
+            id: "platform",
+            name: "Platform",
+            fteCount: 20,
+            weeklyHours: 40,
+            effectiveCapacityPercentage: 0.8,
+            annualSalaryBaseline: 150000,
+          },
+        ],
+        selectedTeamId: "all",
+        services: [
+          {
+            id: "critical-service",
+            name: "Critical Service",
+            deployHours: 0,
+            maintenanceHours: 42,
+            isActive: true,
+            hasExpertise: true,
+            isAutomated: false,
+            prrApproved: true,
+            sloStatus: "healthy",
+            teamId: "core",
+          },
+        ],
+      }),
+    );
+    render(<App />);
+
+    expect(screen.getByTestId("red-zone-alert")).toHaveTextContent(
+      "1 of 2 teams (Core SRE) has crossed the 50% capacity threshold",
+    );
+    expect(screen.queryByTestId("staffing-warning")).not.toBeInTheDocument();
+  });
+
   it("allows the team to adjust its effective capacity factor", async () => {
     const user = userEvent.setup();
     render(<App />);
