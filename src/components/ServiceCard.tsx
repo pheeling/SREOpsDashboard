@@ -1,9 +1,9 @@
-import type { OwnershipModel, Service, SloStatus, Team } from "../engine/types";
+import type { OwnershipModel, Service, SloStatus, TeamConfig } from "../engine/types";
 import { OWNERSHIP_LABELS, getBaseHours, getOwnershipModel, getRequiredHours } from "../engine/calculations";
 
 interface ServiceCardProps {
   service: Service;
-  teams: Team[];
+  teams: TeamConfig[];
   isExpanded: boolean;
   isTopToilContributor?: boolean;
   onToggleExpanded: (id: string) => void;

@@ -1,9 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { Dispatch, ReactNode } from "react";
-import { DEFAULT_TEAMS, type DashboardState, type GlobalConfig } from "../engine/types";
+import type { DashboardState, GlobalConfig } from "../engine/types";
 import { cloneDefaultServices } from "../engine/seedServices";
 import { DEFAULT_ANNUAL_SALARY, getOwnershipModel, OWNERSHIP_LABELS } from "../engine/calculations";
 import { dashboardReducer, type DashboardAction } from "./dashboardReducer";
+import { ensureTeams } from "../engine/teams";
 import { loadState, saveState } from "./localStorage";
 
 export interface AuditLogEntry {
@@ -12,7 +13,7 @@ export interface AuditLogEntry {
   message: string;
 }
 
-export const INITIAL_STATE: DashboardState = {
+export const INITIAL_STATE: DashboardState = ensureTeams({
   globalConfig: {
     fteCount: 5,
     weeklyHours: 40,
@@ -20,9 +21,8 @@ export const INITIAL_STATE: DashboardState = {
     hasInterruptShield: false,
     annualSalary: DEFAULT_ANNUAL_SALARY,
   },
-  teams: DEFAULT_TEAMS.map((team) => ({ ...team })),
-  services: cloneDefaultServices().map((service) => ({ ...service, teamId: DEFAULT_TEAMS[0].id })),
-};
+  services: cloneDefaultServices(),
+});
 
 interface DashboardContextValue {
   state: DashboardState;
@@ -68,7 +68,7 @@ function getAuditMessages(state: DashboardState, action: DashboardAction): strin
         ? [`Updated ${name} Ownership to ${OWNERSHIP_LABELS[action.ownershipModel]}`]
         : [];
     case "SET_SERVICE_TEAM": {
-      const team = state.teams.find((item) => item.id === action.teamId);
+      const team = state.teams?.find((item) => item.id === action.teamId);
       return service && team && service.teamId !== action.teamId
         ? [`Assigned ${name} to team ${team.name}`]
         : [];
@@ -83,6 +83,17 @@ function getAuditMessages(state: DashboardState, action: DashboardAction): strin
       return ["Restored default services"];
     case "UPDATE_GLOBAL_CONFIG":
       return getGlobalConfigAuditMessages(state.globalConfig, action.payload);
+    case "ADD_TEAM":
+      return [`Added team ${action.name.trim() || "New Team"}`];
+    case "RENAME_TEAM": {
+      const team = state.teams?.find((t) => t.id === action.teamId);
+      const next = action.name.trim();
+      return team && next && team.name !== next ? [`Renamed team ${team.name} to ${next}`] : [];
+    }
+    case "DELETE_TEAM": {
+      const team = state.teams?.find((t) => t.id === action.teamId);
+      return team && (state.teams?.length ?? 0) > 1 ? [`Deleted team ${team.name}`] : [];
+    }
     case "RESET":
       return ["Reset dashboard configuration"];
     default:

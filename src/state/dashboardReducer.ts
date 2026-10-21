@@ -1,5 +1,6 @@
-import type { DashboardState, GlobalConfig, OwnershipModel, Service, SloStatus } from "../engine/types";
+import type { DashboardState, GlobalConfig, OwnershipModel, Service, SloStatus, TeamConfig } from "../engine/types";
 import { cloneDefaultServices } from "../engine/seedServices";
+import { ensureTeams, newTeamId, ORGANIZATION_VIEW, getEditableTeam, syncGlobalConfig, DEFAULT_NEW_TEAM } from "../engine/teams";
 import { applyStabilizationSprint } from "../engine/calculations";
 
 export interface NewCustomService {
@@ -24,6 +25,10 @@ export type DashboardAction =
   | { type: "DELETE_ALL_SERVICES" }
   | { type: "RESTORE_DEFAULT_SERVICES" }
   | { type: "UPDATE_GLOBAL_CONFIG"; payload: Partial<GlobalConfig> }
+  | { type: "ADD_TEAM"; name: string }
+  | { type: "RENAME_TEAM"; teamId: string; name: string }
+  | { type: "DELETE_TEAM"; teamId: string; reassignToTeamId?: string }
+  | { type: "SELECT_TEAM"; teamId: string }
   | { type: "RESET"; payload: DashboardState };
 
 function toggleServiceField<K extends keyof Service>(
@@ -83,7 +88,7 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
         ),
       };
     case "SET_SERVICE_TEAM":
-      if (!state.teams.some((team) => team.id === action.teamId)) return state;
+      if (!state.teams?.some((team) => team.id === action.teamId)) return state;
       return {
         ...state,
         services: state.services.map((service) =>
@@ -92,9 +97,6 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
       };
     case "ADD_CUSTOM_SERVICE": {
       const { name, deployHours, maintenanceHours } = action.payload;
-      const teamId = state.teams.some((team) => team.id === action.payload.teamId)
-        ? action.payload.teamId
-        : state.teams[0]?.id;
       const baseSlug = slugify(name) || "custom_service";
       let id = `custom_${baseSlug}`;
       let suffix = 1;
@@ -113,7 +115,9 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
         prrApproved: true,
         sloStatus: "healthy",
         isCustom: true,
-        teamId,
+        teamId: [action.payload.teamId, state.selectedTeamId].find((candidate) =>
+          state.teams?.some((team) => team.id === candidate),
+        ) ?? state.teams?.[0]?.id,
       };
       return { ...state, services: [...state.services, newService] };
     }
@@ -122,15 +126,73 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
     case "DELETE_ALL_SERVICES":
       return { ...state, services: [] };
     case "RESTORE_DEFAULT_SERVICES":
+      return ensureTeams({ ...state, services: cloneDefaultServices() });
+    case "UPDATE_GLOBAL_CONFIG": {
+      const { hasInterruptShield, ...teamFields } = action.payload;
+      const team = getEditableTeam(state);
+      const withShield = {
+        ...state,
+        globalConfig: {
+          ...state.globalConfig,
+          ...(hasInterruptShield !== undefined ? { hasInterruptShield } : {}),
+        },
+      };
+      if (!team) {
+        return { ...withShield, globalConfig: { ...withShield.globalConfig, ...teamFields } };
+      }
+      const updates: Partial<TeamConfig> = {};
+      if (teamFields.fteCount !== undefined) updates.fteCount = teamFields.fteCount;
+      if (teamFields.weeklyHours !== undefined) updates.weeklyHours = teamFields.weeklyHours;
+      if (teamFields.capacityEfficiencyFactor !== undefined) {
+        updates.effectiveCapacityPercentage = teamFields.capacityEfficiencyFactor;
+      }
+      if (teamFields.annualSalary !== undefined) updates.annualSalaryBaseline = teamFields.annualSalary;
+      return syncGlobalConfig({
+        ...withShield,
+        selectedTeamId: team.id,
+        teams: state.teams!.map((t) => (t.id === team.id ? { ...t, ...updates } : t)),
+      });
+    }
+    case "ADD_TEAM": {
+      const base = ensureTeams(state);
+      const team: TeamConfig = {
+        id: newTeamId(action.name, base.teams!),
+        name: action.name.trim() || "New Team",
+        ...DEFAULT_NEW_TEAM,
+      };
+      return syncGlobalConfig({ ...base, teams: [...base.teams!, team], selectedTeamId: team.id });
+    }
+    case "RENAME_TEAM": {
+      const name = action.name.trim();
+      if (!name || !state.teams) return state;
       return {
         ...state,
-        services: cloneDefaultServices().map((service) => ({ ...service, teamId: state.teams[0]?.id })),
+        teams: state.teams.map((team) => (team.id === action.teamId ? { ...team, name } : team)),
       };
-    case "UPDATE_GLOBAL_CONFIG":
-      return {
+    }
+    case "DELETE_TEAM": {
+      const teams = state.teams;
+      if (!teams || teams.length <= 1 || !teams.some((team) => team.id === action.teamId)) return state;
+      const remaining = teams.filter((team) => team.id !== action.teamId);
+      const target =
+        remaining.find((team) => team.id === action.reassignToTeamId) ?? remaining[0];
+      return syncGlobalConfig({
         ...state,
-        globalConfig: { ...state.globalConfig, ...action.payload },
-      };
+        teams: remaining,
+        selectedTeamId:
+          state.selectedTeamId === action.teamId ? target.id : state.selectedTeamId,
+        services: state.services.map((service) =>
+          service.teamId === action.teamId ? { ...service, teamId: target.id } : service,
+        ),
+      });
+    }
+    case "SELECT_TEAM": {
+      if (!state.teams) return state;
+      if (action.teamId !== ORGANIZATION_VIEW && !state.teams.some((team) => team.id === action.teamId)) {
+        return state;
+      }
+      return syncGlobalConfig({ ...state, selectedTeamId: action.teamId });
+    }
     case "RESET":
       return action.payload;
     default:

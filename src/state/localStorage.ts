@@ -1,4 +1,6 @@
-import { DEFAULT_TEAMS, type DashboardState, type Service, type Team } from "../engine/types";
+import type { DashboardState, Service, TeamConfig } from "../engine/types";
+import { syncGlobalConfig } from "../engine/teams";
+import { DEFAULT_TEAM_ID, globalConfigToTeam } from "../engine/calculations";
 
 export const STORAGE_KEY = "sre-ops-dashboard:state";
 
@@ -10,23 +12,41 @@ export function loadState(): DashboardState | null {
     if (!parsed || !parsed.globalConfig || !Array.isArray(parsed.services)) {
       return null;
     }
-    const teams: Team[] =
-      Array.isArray(parsed.teams) && parsed.teams.length > 0
-        ? parsed.teams
-        : DEFAULT_TEAMS.map((team) => ({ ...team }));
-    return {
-      ...parsed,
-      teams,
-      services: parsed.services.map((service: Service) => ({
-        ...service,
-        teamId: teams.some((team) => team.id === service.teamId) ? service.teamId : teams[0].id,
-        prrApproved: service.prrApproved !== false,
-        sloStatus: service.sloStatus ?? "healthy",
-      })),
-    } as DashboardState;
+    const migrated = migrateState(parsed);
+    return migrated ? syncGlobalConfig(migrated) : null;
   } catch {
     return null;
   }
+}
+
+/**
+ * Upgrades legacy single-team saved state to the multi-team schema: wraps the
+ * legacy config into a default team, assigns unowned services to it, and
+ * defaults the scope to 'all'. Returns null for unusable input.
+ */
+export function migrateState(parsed: unknown): DashboardState | null {
+  const raw = parsed as Partial<DashboardState> | null;
+  if (!raw || !raw.globalConfig || !Array.isArray(raw.services)) return null;
+
+  const teams: TeamConfig[] =
+    Array.isArray(raw.teams) && raw.teams.length > 0 ? raw.teams : [globalConfigToTeam(raw.globalConfig)];
+  const fallbackTeamId = teams[0].id ?? DEFAULT_TEAM_ID;
+  const selectedTeamId =
+    raw.selectedTeamId === "all" || teams.some((team) => team.id === raw.selectedTeamId)
+      ? (raw.selectedTeamId as string)
+      : "all";
+
+  return {
+    ...raw,
+    teams,
+    selectedTeamId,
+    services: raw.services.map((service: Service) => ({
+      ...service,
+      teamId: service.teamId ?? fallbackTeamId,
+      prrApproved: service.prrApproved !== false,
+      sloStatus: service.sloStatus ?? "healthy",
+    })),
+  } as DashboardState;
 }
 
 export function saveState(state: DashboardState): void {

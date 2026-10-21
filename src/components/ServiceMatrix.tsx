@@ -81,7 +81,9 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
       : service.sloStatus === "warning" || service.sloStatus === "exhausted";
   });
 
-  const newTeamId = state.teams.some((team) => team.id === selectedTeamId) ? selectedTeamId : (state.teams[0]?.id ?? "");
+  const teams = state.teams ?? [];
+  const defaultTeamId = teams.some((team) => team.id === state.selectedTeamId) ? state.selectedTeamId! : (teams[0]?.id ?? "");
+  const newTeamId = teams.some((team) => team.id === selectedTeamId) ? selectedTeamId : defaultTeamId;
 
   const handleAddCustomService = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -173,7 +175,7 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
               required
               aria-label="Custom Service Assigned Team"
             >
-              {state.teams.map((team) => (
+              {teams.map((team) => (
                 <option key={team.id} value={team.id}>
                   {team.name}
                 </option>
@@ -251,7 +253,7 @@ export function ServiceMatrix({ reveal = null }: ServiceMatrixProps) {
                 <ServiceCard
                   key={service.id}
                   service={service}
-                  teams={state.teams}
+                  teams={teams}
                   isExpanded={expandedCardIds.has(service.id)}
                   onToggleExpanded={toggleExpandedCard}
                   isTopToilContributor={topToilIds.has(service.id)}
