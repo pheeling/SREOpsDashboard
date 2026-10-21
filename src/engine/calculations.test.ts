@@ -561,4 +561,20 @@ describe("multi-team scoped calculations", () => {
     expect(r.totalRoutineOperations).toBe(40);
     expect(r.hiringShortfall).toBe(computeScopedReport(state, "a").hiringShortfall + computeScopedReport(state, "b").hiringShortfall);
   });
+
+  it("does not let a zero-service team with FTEs mask another team's red zone", () => {
+    const withIdle: DashboardState = {
+      ...state,
+      teams: [
+        ...state.teams!,
+        { id: "c", name: "C", fteCount: 10, weeklyHours: 40, effectiveCapacityPercentage: 0.8, annualSalaryBaseline: 100000 },
+      ],
+    };
+    const before = computeScopedReport(state, "all");
+    const after = computeScopedReport(withIdle, "all");
+    expect(after.teamsInRedZone).toBe(1);
+    expect(after.hiringShortfall).toBeGreaterThan(0);
+    expect(after.hiringShortfall).toBe(before.hiringShortfall);
+    expect(after.deficitHours).toBe(computeScopedReport(state, "a").deficitHours);
+  });
 });

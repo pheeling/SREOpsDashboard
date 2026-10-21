@@ -150,6 +150,10 @@ export interface ScopedCapacityReport {
   totalRoutineOperations: number;
   /** Sum of per-team hiring shortfalls (over-staffed teams never mask deficits). */
   hiringShortfall: number;
+  /** Sum of per-team max(0, deficit) hours; teams with headroom never offset others. */
+  deficitHours: number;
+  /** Number of teams in scope whose operational load breaches the red-zone threshold. */
+  teamsInRedZone: number;
   /** Per-team reports for the teams in scope. */
   teamReports: { team: TeamConfig; report: CapacityReport }[];
 }
