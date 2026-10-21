@@ -1,5 +1,5 @@
 import { useDashboard } from "../state/DashboardContext";
-import { computeCapacityReport } from "../engine/calculations";
+import { computeCapacityReport, computeScopedReport } from "../engine/calculations";
 
 const RADIUS = 80;
 const STROKE = 22;
@@ -20,11 +20,14 @@ function gaugeLabel(percent: number): string {
 }
 
 export function LoadGauge() {
-  const { state } = useDashboard();
+  const { state, fullState, selectedTeamName } = useDashboard();
   const report = computeCapacityReport(state);
   const loadPercent = Math.min(100, Math.max(0, report.operationalLoadRatio * 100));
   const color = gaugeColor(loadPercent);
   const filledLength = (loadPercent / 100) * CIRCUMFERENCE;
+
+  const isOrgView = !selectedTeamName && (fullState.teams?.length ?? 0) > 0;
+  const orgReport = isOrgView ? computeScopedReport(fullState, "all") : null;
 
   return (
     <section
@@ -33,7 +36,47 @@ export function LoadGauge() {
       data-testid="load-gauge"
       id="search-target-load-gauge"
     >
-      <h2>Operational Load</h2>
+      <h2>{orgReport ? "Team Health Breakdown" : "Operational Load"}</h2>
+      {orgReport && (
+        <div className="load-gauge__teams" data-testid="team-health-breakdown">
+          <p className="load-gauge__reading" data-testid="teams-in-crisis">
+            {orgReport.teamsInRedZone} / {orgReport.teamReports.length} Teams in Crisis
+          </p>
+          <p data-testid="org-deficit-hours">
+            Unhedged operational deficit: <strong>{orgReport.deficitHours.toFixed(1)} hrs/wk</strong>
+          </p>
+          <ul className="load-gauge__team-list">
+            {orgReport.teamReports.map(({ team, report: teamReport }) => {
+              const percent = Math.max(0, teamReport.operationalLoadRatio * 100);
+              return (
+                <li key={team.id} data-testid={`team-health-${team.id}`}>
+                  <span>
+                    {team.name}: {percent.toFixed(0)}% {teamReport.isRedZone ? "(Red Zone)" : ""}
+                  </span>
+                  <div
+                    role="progressbar"
+                    aria-label={`${team.name} operational load`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.min(100, Math.round(percent))}
+                    style={{ background: "#e2e8f0", height: 8, borderRadius: 4 }}
+                  >
+                    <div
+                      style={{
+                        width: `${Math.min(100, percent)}%`,
+                        height: "100%",
+                        borderRadius: 4,
+                        background: gaugeColor(percent),
+                      }}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <h3>Aggregate Workload Volume (Assumes 100% Fungibility)</h3>
+        </div>
+      )}
       <svg
         className="load-gauge__svg"
         viewBox="0 0 200 110"

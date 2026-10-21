@@ -492,6 +492,8 @@ export function computeScopedReport(state: DashboardState, scope: DashboardScope
     ),
     totalRoutineOperations,
     hiringShortfall: teamReports.reduce((sum, { report }) => sum + report.hiringCost, 0),
+    deficitHours: teamReports.reduce((sum, { report }) => sum + Math.max(0, report.deficitHours), 0),
+    teamsInRedZone: teamReports.filter(({ report }) => report.isRedZone).length,
     teamReports,
   };
 }
