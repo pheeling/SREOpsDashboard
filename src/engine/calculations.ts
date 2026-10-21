@@ -10,9 +10,12 @@ import type {
   CapacityReport,
   DashboardState,
   GlobalConfig,
+  DashboardScope,
   OwnershipModel,
+  ScopedCapacityReport,
   Service,
   ServiceBreakdown,
+  TeamConfig,
 } from "./types";
 
 /** Divisor applied to a service's hours once it has been automated ("1/3 Automation Rule"). */
@@ -422,5 +425,73 @@ export function simulateStabilizationSprint(state: DashboardState): Stabilizatio
     hoursSavedPerWeek: before.totalRequiredHours - after.totalRequiredHours,
     before,
     after,
+  };
+}
+
+export const DEFAULT_TEAM_ID = "default-team";
+export const DEFAULT_TEAM_NAME = "Core SRE";
+
+/** Converts a legacy GlobalConfig into the default team entry. */
+export function globalConfigToTeam(globalConfig: GlobalConfig): TeamConfig {
+  return {
+    id: DEFAULT_TEAM_ID,
+    name: DEFAULT_TEAM_NAME,
+    fteCount: finiteNumber(globalConfig.fteCount),
+    weeklyHours: finiteNumber(globalConfig.weeklyHours),
+    effectiveCapacityPercentage: finiteNumber(
+      globalConfig.capacityEfficiencyFactor,
+      DEFAULT_CAPACITY_EFFICIENCY_FACTOR,
+    ),
+    annualSalaryBaseline: finiteNumber(globalConfig.annualSalary),
+  };
+}
+
+/** Builds the staffing parameters the single-team engine expects from a team. */
+export function teamToGlobalConfig(team: TeamConfig, base?: Pick<GlobalConfig, "hasInterruptShield">): GlobalConfig {
+  return {
+    fteCount: team.fteCount,
+    weeklyHours: team.weeklyHours,
+    capacityEfficiencyFactor: team.effectiveCapacityPercentage,
+    annualSalary: team.annualSalaryBaseline,
+    hasInterruptShield: base?.hasInterruptShield,
+  };
+}
+
+/** Services assigned to a team; services lacking a teamId belong to the default team. */
+export function getTeamServices(services: Service[], teamId: string): Service[] {
+  return services.filter((service) => (service.teamId ?? DEFAULT_TEAM_ID) === teamId);
+}
+
+/**
+ * Computes metrics for a dashboard scope: a single team's isolated metrics
+ * when given a teamId, or organization-wide aggregates when given 'all'.
+ */
+export function computeScopedReport(state: DashboardState, scope: DashboardScope = "all"): ScopedCapacityReport {
+  const teams = state.teams ?? [globalConfigToTeam(state.globalConfig)];
+  const scopedTeams = scope === "all" ? teams : teams.filter((team) => team.id === scope);
+
+  const teamReports = scopedTeams.map((team) => ({
+    team,
+    report: computeCapacityReport({
+      globalConfig: teamToGlobalConfig(team, state.globalConfig),
+      services: getTeamServices(state.services, team.id),
+    }),
+  }));
+
+  const totalRoutineOperations =
+    scope === "all"
+      ? getTotalRequiredHours(state.services)
+      : teamReports.reduce((sum, { report }) => sum + report.totalRequiredHours, 0);
+
+  return {
+    scope,
+    totalContractedHours: teamReports.reduce((sum, { team }) => sum + team.fteCount * team.weeklyHours, 0),
+    totalEffectiveCapacity: teamReports.reduce(
+      (sum, { team }) => sum + team.fteCount * team.weeklyHours * team.effectiveCapacityPercentage,
+      0,
+    ),
+    totalRoutineOperations,
+    hiringShortfall: teamReports.reduce((sum, { report }) => sum + report.hiringCost, 0),
+    teamReports,
   };
 }
