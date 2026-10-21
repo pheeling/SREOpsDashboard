@@ -20,6 +20,12 @@ export interface GlobalConfig {
   hasInterruptShield?: boolean;
 }
 
+export interface Team {
+  id: string;
+  name: string;
+  config: GlobalConfig;
+}
+
 export type OwnershipModel = "sre_full" | "shared" | "dev_owned";
 
 export type SloStatus = "healthy" | "warning" | "exhausted";
@@ -53,10 +59,19 @@ export interface Service {
   weight?: number;
   /** Who carries the pager/toil for this service; defaults to `sre_full`. */
   ownershipModel?: OwnershipModel;
+  /** Team that owns this service (reassigned when its team is deleted). */
+  teamId?: string;
 }
 
 export interface DashboardState {
+  /**
+   * Effective configuration used by the capacity engine: the selected team's
+   * config, or the organization aggregate when no single team is selected.
+   */
   globalConfig: GlobalConfig;
+  teams?: Team[];
+  /** Selected team id, or `ORGANIZATION_VIEW` for the aggregate view. */
+  selectedTeamId?: string;
   services: Service[];
 }
 

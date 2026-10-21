@@ -4,6 +4,7 @@ import type { DashboardState, GlobalConfig } from "../engine/types";
 import { cloneDefaultServices } from "../engine/seedServices";
 import { DEFAULT_ANNUAL_SALARY, getOwnershipModel, OWNERSHIP_LABELS } from "../engine/calculations";
 import { dashboardReducer, type DashboardAction } from "./dashboardReducer";
+import { ensureTeams } from "../engine/teams";
 import { loadState, saveState } from "./localStorage";
 
 export interface AuditLogEntry {
@@ -12,7 +13,7 @@ export interface AuditLogEntry {
   message: string;
 }
 
-export const INITIAL_STATE: DashboardState = {
+export const INITIAL_STATE: DashboardState = ensureTeams({
   globalConfig: {
     fteCount: 5,
     weeklyHours: 40,
@@ -21,7 +22,7 @@ export const INITIAL_STATE: DashboardState = {
     annualSalary: DEFAULT_ANNUAL_SALARY,
   },
   services: cloneDefaultServices(),
-};
+});
 
 interface DashboardContextValue {
   state: DashboardState;
@@ -76,6 +77,17 @@ function getAuditMessages(state: DashboardState, action: DashboardAction): strin
       return ["Restored default services"];
     case "UPDATE_GLOBAL_CONFIG":
       return getGlobalConfigAuditMessages(state.globalConfig, action.payload);
+    case "ADD_TEAM":
+      return [`Added team ${action.name.trim() || "New Team"}`];
+    case "RENAME_TEAM": {
+      const team = state.teams?.find((t) => t.id === action.teamId);
+      const next = action.name.trim();
+      return team && next && team.name !== next ? [`Renamed team ${team.name} to ${next}`] : [];
+    }
+    case "DELETE_TEAM": {
+      const team = state.teams?.find((t) => t.id === action.teamId);
+      return team && (state.teams?.length ?? 0) > 1 ? [`Deleted team ${team.name}`] : [];
+    }
     case "RESET":
       return ["Reset dashboard configuration"];
     default:

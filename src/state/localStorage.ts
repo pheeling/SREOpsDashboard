@@ -1,4 +1,5 @@
 import type { DashboardState, Service } from "../engine/types";
+import { ensureTeams } from "../engine/teams";
 
 export const STORAGE_KEY = "sre-ops-dashboard:state";
 
@@ -10,14 +11,14 @@ export function loadState(): DashboardState | null {
     if (!parsed || !parsed.globalConfig || !Array.isArray(parsed.services)) {
       return null;
     }
-    return {
+    return ensureTeams({
       ...parsed,
       services: parsed.services.map((service: Service) => ({
         ...service,
         prrApproved: service.prrApproved !== false,
         sloStatus: service.sloStatus ?? "healthy",
       })),
-    } as DashboardState;
+    } as DashboardState);
   } catch {
     return null;
   }
