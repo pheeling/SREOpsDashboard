@@ -61,3 +61,11 @@ CREATE TABLE IF NOT EXISTS snapshot_services (
 CREATE INDEX IF NOT EXISTS idx_snapshots_created_at ON snapshots(created_at);
 CREATE INDEX IF NOT EXISTS idx_snapshot_teams_lookup ON snapshot_teams(snapshot_id, team_id);
 CREATE INDEX IF NOT EXISTS idx_snapshot_services_lookup ON snapshot_services(snapshot_id, team_id);
+
+CREATE TABLE IF NOT EXISTS audit_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  trigger_type TEXT NOT NULL,
+  snapshot_id TEXT,
+  message TEXT NOT NULL
+);
