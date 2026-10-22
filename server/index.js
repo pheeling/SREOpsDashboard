@@ -2,6 +2,7 @@ import path from 'node:path';
 import express from 'express';
 import { createApp, captureScheduledSnapshot } from './app.js';
 import { openDatabase, pruneOldSnapshots } from './db.js';
+import { initAutoRestoreScheduler } from './services/autoRestore.js';
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOUR_MS = 60 * 60 * 1000;
@@ -21,6 +22,8 @@ function runMaintenance() {
     console.error('[DB] Maintenance failed', error);
   }
 }
+
+initAutoRestoreScheduler(db);
 
 runMaintenance();
 setInterval(runMaintenance, 24 * HOUR_MS).unref();
